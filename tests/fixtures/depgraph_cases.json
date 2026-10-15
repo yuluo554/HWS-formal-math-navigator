@@ -1,0 +1,1 @@
+[{"id": "dep_001", "theorems": ["add_assoc", "add_comm", "add_left_comm"], "expected_nodes": 3, "expected_edges": 2, "expected_broken_refs": [], "expected_index_gaps": []}, {"id": "dep_002", "theorems": ["add_assoc", "NonExistentTheorem"], "expected_nodes": 2, "expected_edges": 0, "expected_broken_refs": ["NonExistentTheorem"], "expected_index_gaps": []}]

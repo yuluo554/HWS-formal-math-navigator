@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hws-formal-math-navigator"
+version = "0.1.0"
+description = "形式化数学库导航与证明骨架生成器"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "HWS", email = "example@example.com"}
+]
+keywords = ["lean4", "mathlib4", "formal-math", "theorem-proving"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "PyYAML>=5.1",
+    "jinja2>=3.0",
+]
+
+[project.optional-dependencies]
+vector = ["numpy>=1.20", "scikit-learn>=1.0"]
+gui = ["PySide6>=6.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+all = ["hws-formal-math-navigator[vector,gui]"]
+
+[project.scripts]
+hws-formal-math = "hws_formal_math.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/yuluo554/HWS-formal-math-navigator"
+Repository = "https://github.com/yuluo554/HWS-formal-math-navigator.git"
+Issues = "https://github.com/yuluo554/HWS-formal-math-navigator/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/hws_formal_math"]
+branch = true
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+]

@@ -54,3 +54,6 @@ mathlib_src/
 .elan/
 .lake/
 lake-packages/
+
+# 本批特有：原始数据不入仓（只入索引元数据）
+data/raw/

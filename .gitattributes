@@ -1,0 +1,14 @@
+# .gitattributes
+
+# 文本归一
+* text=auto eol=lf
+
+# 快照冻结（防 EOL 改写字节）
+data/index/*.jsonl -text
+data/snapshots/*.json -text
+data/proposals/*.json -text
+
+# 二进制文件
+*.pdf binary
+*.exe binary
+*.zip binary

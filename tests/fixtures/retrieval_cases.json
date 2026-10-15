@@ -1,0 +1,1 @@
+[{"id": "case_001", "query": "加法结合律", "ground_truth": ["add_assoc"], "domain": "algebra", "difficulty": "easy"}, {"id": "case_002", "query": "对任意正整数 n，n 的平方大于等于 n", "ground_truth": ["Nat.pow_le_self", "Nat.le_self"], "domain": "number_theory", "difficulty": "medium"}]

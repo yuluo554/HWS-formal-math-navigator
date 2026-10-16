@@ -35,17 +35,22 @@ M5 声称"发布与交付完成"，但**发布物本体从未被验证过**。M6
 | D11 | fixtures 的 ground_truth 是不存在的定理名 | 🟠 | `Nat.pow_le_self`/`add_left_comm` 在索引中不存在 | 改为索引中真实存在的定理 |
 | D12 | README 快速开始的 `search "加法结合律"` 返回空 | 🟠 文档债 | 检索器无中文归一（设计文档 §2.3 承诺"查询预处理"） | 补确定性别名表 `data/index/query_aliases.json` |
 
-## 三、构建产物清单（M6 重建）
+## 三、构建产物清单（M6 重建，最终基线）
 
-| 产物 | 说明 | SHA256 |
-|------|------|--------|
-| `hws-formal-math-v0.1.0-win64.zip` | CLI 冻结产物（onedir，含 `_internal/` 数据） | 见 `release/manifest.json`（命令实算，非手抄） |
-| `hws_formal_math_navigator-0.1.0.tar.gz` | 源码包 | 同上 |
-| `hws_formal_math_navigator-0.1.0-py3-none-any.whl` | wheel | 同上 |
+**基线**：`git rev-parse HEAD`（本文件所在提交的父提交为产物构建基线；`git diff <基线>..HEAD -- src/ tools/hws-formal-math.spec` 为空表示产物与源码同基线）。
+
+| 产物 | 说明 | 大小 | SHA256 |
+|------|------|------|--------|
+| `hws-formal-math-v0.1.0-win64.zip` | CLI 冻结产物（onedir，含 `_internal/` 数据） | 17,604,753 | `42ad6af586fb10164140d25d40a353ceeab2192a785887641f031ab0fa7be1e2` |
+| `hws_formal_math_navigator-0.1.0.tar.gz` | 源码包 | 58,664 | `3f24a4540fdc0483606cadaaddf3975037475d115b72439754bf6c69d8f1fc1a` |
+| `hws_formal_math_navigator-0.1.0-py3-none-any.whl` | wheel | 43,124 | `a75c3a104aa79000df5b4169596e413514db0f75c88848218255b9633c199aa1` |
 
 **打包确定性**：`tools/package_release.py` 用 `ZIP_STORED` + 条目显式 sort + 全条目固定 `date_time`
-→ 两次独立打包**逐字节一致**（实测 sha256 相同）。可复跑的是**打包这一步**；
+→ 两次独立打包**逐个字节一致**（实测两轮 sha256 均为 `42ad6af5…`）。可复跑的是**打包这一步**；
 exe 构建本身（PyInstaller）不承诺跨机字节一致。
+
+> **M5 附件已作废**：v0.1.0 原附件（`31bb6c7d…` exe / `fdd7558a…` tar.gz / `85d51157…` whl）
+> 因 D1/D2 缺陷不可用，其 sha256 保留于此仅作历史对账，**不作为发布基线**。
 
 ## 四、发布物本体验证（真下载，非本机 dist）
 

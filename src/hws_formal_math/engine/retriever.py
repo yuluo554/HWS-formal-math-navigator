@@ -38,8 +38,39 @@ class Retriever:
         self.index: List[Dict[str, Any]] = []
         self.doc_freq: Dict[str, int] = {}  # 文档频率
         self.avg_doc_len: float = 0.0
+        self.aliases: Dict[str, str] = {}
+        self._load_aliases()
         self._load_index()
         self._build_doc_freq()
+
+    def _load_aliases(self):
+        """加载确定性中文→Lean 词元别名表（规则优先，零模型依赖）
+
+        别名表缺失时静默降级为空表（检索仍可用，只是中文查询命中率降低）——
+        K5 口径：核心检索不得因可选数据缺失而不可用。
+        """
+        alias_file = self.index_path / "query_aliases.json"
+        if not alias_file.exists():
+            return
+        with open(alias_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        raw = data.get("term_aliases", {})
+        # 长词优先：保证"加法结合律"整体映射先于"加法"匹配
+        self.aliases = dict(sorted(raw.items(), key=lambda kv: -len(kv[0])))
+
+    def _normalize_query(self, query: str) -> str:
+        """查询预处理：中文概念 → Lean 词元（plan/02 §2.3 承诺的查询预处理）
+
+        确定性规则：按别名表长度降序做一次性替换，命中即消费（不重叠替换）。
+        未在表中的中文按原样保留，交由分词处理（不做猜测，不引入模型）。
+        """
+        if not self.aliases:
+            return query
+        result = query
+        for term, token in self.aliases.items():
+            if term and term in result:
+                result = result.replace(term, f" {token} ")
+        return result
     
     def _load_index(self):
         """加载索引元数据"""
@@ -158,7 +189,7 @@ class Retriever:
         Returns:
             List[SearchResult]: 检索结果列表
         """
-        query_terms = self._tokenize(query)
+        query_terms = self._tokenize(self._normalize_query(query))
         
         if not query_terms:
             return []

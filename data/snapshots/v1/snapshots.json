@@ -1,0 +1,72 @@
+[
+  {
+    "code": "theorem skeleton_001 : ∀ n : ℕ, n + 0 = n := by sorry",
+    "difficulty": "easy",
+    "domain": "algebra",
+    "id": "skeleton_001",
+    "proposition": "∀ n : ℕ, n + 0 = n"
+  },
+  {
+    "code": "theorem skeleton_002 : ∀ n : ℕ, 0 + n = n := by sorry",
+    "difficulty": "easy",
+    "domain": "algebra",
+    "id": "skeleton_002",
+    "proposition": "∀ n : ℕ, 0 + n = n"
+  },
+  {
+    "code": "theorem skeleton_003 : ∀ n : ℕ, n ^ 1 = n := by sorry",
+    "difficulty": "easy",
+    "domain": "number_theory",
+    "id": "skeleton_003",
+    "proposition": "∀ n : ℕ, n ^ 1 = n"
+  },
+  {
+    "code": "theorem skeleton_004 : ∀ n : ℕ, n ^ 0 = 1 := by sorry",
+    "difficulty": "easy",
+    "domain": "number_theory",
+    "id": "skeleton_004",
+    "proposition": "∀ n : ℕ, n ^ 0 = 1"
+  },
+  {
+    "code": "theorem skeleton_005 : ∀ n : ℕ, n * 1 = n := by sorry",
+    "difficulty": "easy",
+    "domain": "algebra",
+    "id": "skeleton_005",
+    "proposition": "∀ n : ℕ, n * 1 = n"
+  },
+  {
+    "code": "theorem skeleton_006 : ∀ a b c : ℕ, a + b + c = a + (b + c) := by sorry",
+    "difficulty": "medium",
+    "domain": "algebra",
+    "id": "skeleton_006",
+    "proposition": "∀ a b c : ℕ, a + b + c = a + (b + c)"
+  },
+  {
+    "code": "theorem skeleton_007 : ∀ a b : ℕ, a + b = b + a := by sorry",
+    "difficulty": "medium",
+    "domain": "algebra",
+    "id": "skeleton_007",
+    "proposition": "∀ a b : ℕ, a + b = b + a"
+  },
+  {
+    "code": "theorem skeleton_008 : ∀ n : ℕ, n ^ 2 ≥ n := by sorry",
+    "difficulty": "medium",
+    "domain": "number_theory",
+    "id": "skeleton_008",
+    "proposition": "∀ n : ℕ, n ^ 2 ≥ n"
+  },
+  {
+    "code": "theorem skeleton_009 : ∀ n : ℕ, 0 < n.factorial := by sorry",
+    "difficulty": "medium",
+    "domain": "combinatorics",
+    "id": "skeleton_009",
+    "proposition": "∀ n : ℕ, 0 < n.factorial"
+  },
+  {
+    "code": "theorem skeleton_010 : ∀ x : ℝ, deriv sin x = cos x := by sorry",
+    "difficulty": "hard",
+    "domain": "analysis",
+    "id": "skeleton_010",
+    "proposition": "∀ x : ℝ, deriv sin x = cos x"
+  }
+]

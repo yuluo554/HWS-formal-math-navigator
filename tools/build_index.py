@@ -398,7 +398,10 @@ def _compute_domain_coverage(theorems: List[Dict[str, Any]]) -> Dict[str, int]:
 
 if __name__ == "__main__":
     import argparse
-    
+    from _encoding import ensure_utf8_stdio
+
+    ensure_utf8_stdio()
+
     parser = argparse.ArgumentParser(description="构建 mathlib4 索引")
     parser.add_argument(
         "--mathlib4-path",

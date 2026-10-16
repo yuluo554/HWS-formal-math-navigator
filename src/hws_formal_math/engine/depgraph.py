@@ -126,70 +126,62 @@ class DependencyGraph:
     
     def _detect_broken_refs(self, graph: Dict[str, List[str]]) -> tuple:
         """
-        检测断链
-        
-        K2 口径：index_gap ≠ 定理不存在
-        - broken_refs: 索引覆盖范围内但当前定理未收录的依赖
-        - index_gaps: 索引未覆盖的模块中的定理（可能是用户误导）
-        
+        检测断链与 index_gap
+
+        K2 口径：index_gap ≠ 定理不存在。
+
+        本索引的 deps 字段承载 Lean `import` 提取出的**模块名**（见 plan/02 §一 步骤 3），
+        故分类规则按"依赖项形态"确定（纯函数，不猜测）：
+
+        | 依赖项形态 | 在索引中 | 分类 |
+        |---|---|---|
+        | 模块名（含 `.`） | 被覆盖 | 正常边（不计入 gap/broken） |
+        | 模块名（含 `.`） | 未覆盖 | **index_gap**（索引未覆盖该模块，绝不判"定理不存在"） |
+        | 裸名（不含 `.`） | 在索引 | 正常边 |
+        | 裸名（不含 `.`） | 不在索引 | **broken_ref**（引用定理不在索引中） |
+
         Args:
-            graph: 依赖图
-            
+            graph: 依赖图（{定理名: [依赖项...]}）
+
         Returns:
             Tuple[broken_refs, index_gaps]
         """
         broken_refs = []
         index_gaps = []
-        
+
         for node, deps in graph.items():
             for dep in deps:
-                if dep not in self.index:
-                    # 检查是否在索引覆盖范围内
-                    if self._is_module_covered(dep):
-                        broken_refs.append(dep)
-                    else:
+                if dep in self.index:
+                    continue  # 定理级依赖，已被索引收录
+                if "." in dep:
+                    # 模块级依赖：covered 则正常，未覆盖则 index_gap
+                    if not self._is_module_covered(dep):
                         index_gaps.append(dep)
-        
-        # 去重
-        broken_refs = list(set(broken_refs))
-        index_gaps = list(set(index_gaps))
-        
+                else:
+                    # 裸名依赖：定理级引用但索引未收录 → 断链
+                    broken_refs.append(dep)
+
+        # 去重（确定性：排序）
+        broken_refs = sorted(set(broken_refs))
+        index_gaps = sorted(set(index_gaps))
+
         return broken_refs, index_gaps
     
-    def _is_module_covered(self, theorem: str) -> bool:
+    def _is_module_covered(self, module_name: str) -> bool:
         """
-        检查定理所在模块是否被索引覆盖
-        
-        通过模块名前缀匹配来判断
-        
+        检查模块是否被索引覆盖
+
+        K2 口径：index_gap ≠ 定理不存在。
+        本项目的 deps 字段承载 Lean `import` 语句提取出的**模块名**，
+        故"覆盖"的判据是：该模块名下确有定理被索引收录（self.modules 由索引实际内容构建）。
+
         Args:
-            theorem: 定理名
-            
+            module_name: 模块名（如 Mathlib.Algebra.Group.Defs）
+
         Returns:
-            bool: 是否被覆盖
+            bool: 该模块是否被索引覆盖
         """
-        # 尝试从定理名推断模块
-        # 例如：add_assoc 可能属于 Mathlib.Algebra.Group.Defs
-        # 这里使用简单的启发式：检查是否有任何模块包含该定理名作为后缀
-        
-        # 更精确的方法：检查索引中是否有同模块的定理
-        for module in self.modules:
-            # 检查模块名是否包含定理名的一部分
-            # 这是一个简化实现
-            pass
-        
-        # 简化实现：如果定理名在索引中，则模块被覆盖
-        # 否则，检查是否有同前缀的定理
-        if theorem in self.index:
-            return True
-        
-        # 检查是否有同前缀的定理（例如 add_* 系列）
-        prefix = theorem.split('_')[0] + '_'
-        for name in self.index:
-            if name.startswith(prefix):
-                return True
-        
-        return False
+        return module_name in self.modules
     
     def _find_shortest_paths(self, graph: Dict[str, List[str]], start: str) -> Dict[str, List[str]]:
         """

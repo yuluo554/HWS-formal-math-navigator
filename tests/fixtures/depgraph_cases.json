@@ -1,1 +1,7 @@
-[{"id": "dep_001", "theorems": ["add_assoc", "add_comm", "add_left_comm"], "expected_nodes": 3, "expected_edges": 2, "expected_broken_refs": [], "expected_index_gaps": []}, {"id": "dep_002", "theorems": ["add_assoc", "NonExistentTheorem"], "expected_nodes": 2, "expected_edges": 0, "expected_broken_refs": ["NonExistentTheorem"], "expected_index_gaps": []}]
+[
+  {"id": "dep_001", "theorems": ["add_assoc", "add_comm"], "expected_nodes": 2, "expected_edges": 4, "expected_broken_refs": [], "expected_index_gaps": ["Mathlib.Init"], "note": "模块级依赖：Mathlib.Algebra.Group.Defs 已覆盖，Mathlib.Init 未覆盖 → index_gap"},
+  {"id": "dep_002", "theorems": ["add_assoc", "NonExistentTheorem"], "expected_nodes": 1, "expected_edges": 2, "expected_broken_refs": [], "expected_index_gaps": ["Mathlib.Init"], "note": "不存在的定理不入图（变异验证），其名不构成 broken_ref"},
+  {"id": "dep_003", "theorems": ["pow_le_self", "pow_two_le_self", "pow_zero"], "expected_nodes": 3, "expected_edges": 6, "expected_broken_refs": [], "expected_index_gaps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "note": "数论域三定理，含未覆盖模块 Mathlib.Data.Nat.Init"},
+  {"id": "dep_004", "theorems": ["deriv_sin", "deriv_cos"], "expected_nodes": 2, "expected_edges": 4, "expected_broken_refs": [], "expected_index_gaps": ["Mathlib.Analysis.Calculus.Deriv", "Mathlib.Init"], "note": "分析域：Mathlib.Analysis.Calculus.Deriv 未被索引覆盖 → index_gap（非定理不存在）"},
+  {"id": "dep_005", "theorems": ["choose_one"], "expected_nodes": 1, "expected_edges": 2, "expected_broken_refs": [], "expected_index_gaps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "note": "组合域单定理"}
+]

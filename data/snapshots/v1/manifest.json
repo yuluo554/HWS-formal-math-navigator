@@ -1,0 +1,17 @@
+{
+  "case_count": 10,
+  "domains": [
+    "algebra",
+    "analysis",
+    "combinatorics",
+    "number_theory"
+  ],
+  "generation_config": {
+    "mode": "rule_based",
+    "model": null,
+    "note": "模型未启用，骨架按确定性规则生成（证明体为 by sorry 占位）"
+  },
+  "generation_date": "2026-01-01",
+  "sha256": "fcf7aaf7a075f09d2a578b5ddb69ada4b5a9ad83c9bb9cd36afcda5e30d6012b",
+  "version": "1.0"
+}

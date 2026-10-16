@@ -1,1 +1,12 @@
-[{"id": "skeleton_001", "proposition": "∀ n : ℕ, n + 0 = n", "expected_status": "PASS_NO_SORRY", "domain": "algebra", "difficulty": "easy"}, {"id": "skeleton_002", "proposition": "∀ n : ℕ, n + 1 > n", "expected_status": "PASS_WITH_SORRY", "domain": "arithmetic", "difficulty": "medium", "note": "可能需要 sorry 占位"}, {"id": "skeleton_003", "proposition": "∀ f : ℝ → ℝ, continuous f → is_differentiable f", "expected_status": "FAIL", "domain": "analysis", "difficulty": "hard", "note": "连续函数不一定可微"}]
+[
+  {"id": "skeleton_001", "proposition": "∀ n : ℕ, n + 0 = n", "domain": "algebra", "difficulty": "easy"},
+  {"id": "skeleton_002", "proposition": "∀ n : ℕ, 0 + n = n", "domain": "algebra", "difficulty": "easy"},
+  {"id": "skeleton_003", "proposition": "∀ n : ℕ, n ^ 1 = n", "domain": "number_theory", "difficulty": "easy"},
+  {"id": "skeleton_004", "proposition": "∀ n : ℕ, n ^ 0 = 1", "domain": "number_theory", "difficulty": "easy"},
+  {"id": "skeleton_005", "proposition": "∀ n : ℕ, n * 1 = n", "domain": "algebra", "difficulty": "easy"},
+  {"id": "skeleton_006", "proposition": "∀ a b c : ℕ, a + b + c = a + (b + c)", "domain": "algebra", "difficulty": "medium"},
+  {"id": "skeleton_007", "proposition": "∀ a b : ℕ, a + b = b + a", "domain": "algebra", "difficulty": "medium"},
+  {"id": "skeleton_008", "proposition": "∀ n : ℕ, n ^ 2 ≥ n", "domain": "number_theory", "difficulty": "medium"},
+  {"id": "skeleton_009", "proposition": "∀ n : ℕ, 0 < n.factorial", "domain": "combinatorics", "difficulty": "medium"},
+  {"id": "skeleton_010", "proposition": "∀ x : ℝ, deriv sin x = cos x", "domain": "analysis", "difficulty": "hard"}
+]

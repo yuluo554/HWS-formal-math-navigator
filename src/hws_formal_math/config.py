@@ -1,10 +1,28 @@
 """配置管理"""
 
 import os
+import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
 import yaml
+
+
+def is_frozen() -> bool:
+    """是否运行在 PyInstaller 冻结态"""
+    return getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
+
+
+def default_data_dir() -> Path:
+    """随包数据目录
+
+    冻结态：数据由 spec 的 datas 打进产物，落在 _MEIPASS（onefile）
+    或 exe 同级（onedir）——冻结态自检据此断言"数据随包走"。
+    源码态：CWD 相对的 data/。
+    """
+    if is_frozen():
+        return Path(sys._MEIPASS) / "data"
+    return Path("data")
 
 
 @dataclass
@@ -30,8 +48,8 @@ class Config:
     """主配置"""
     model: ModelConfig = field(default_factory=ModelConfig)
     lean: LeanConfig = field(default_factory=LeanConfig)
-    index_path: Path = field(default_factory=lambda: Path("data/index"))
-    data_dir: Path = field(default_factory=lambda: Path("data"))
+    index_path: Path = field(default_factory=lambda: default_data_dir() / "index")
+    data_dir: Path = field(default_factory=default_data_dir)
     
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":

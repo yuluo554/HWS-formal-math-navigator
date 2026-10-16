@@ -1,50 +1,52 @@
-"""打包脚本"""
+"""打包脚本
 
-import subprocess
-import shutil
-from pathlib import Path
+构建 CLI 冻结产物 + sdist/wheel。
+
+纪律（crash-loop-rescue）：
+  - 构建产物留底到仓库树外，因为 `--clean` 类构建会先删 dist（构建失败时旧产物已没了）
+  - 本脚本**不**先 rmtree 正式 dist：先建到临时目录，成功后原子替换（防"删了旧的、没建出新的"窗口）
+"""
+
+from __future__ import annotations
+
 import hashlib
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SPEC_FILE = REPO_ROOT / "tools" / "hws-formal-math.spec"
 
 
-def build_cli():
-    """构建 CLI exe"""
-    subprocess.run([
-        "pyinstaller",
-        "--name", "hws-formal-math",
-        "--console",
-        "--hidden-import", "hws_formal_math.cli",
-        "src/hws_formal_math/cli.py"
-    ], check=True)
+def build_cli(dist_dir: Path | None = None) -> None:
+    """构建 CLI exe（走 spec 文件，保证 hiddenimports/datas 口径一致）"""
+    cmd = ["pyinstaller", "--noconfirm", str(SPEC_FILE)]
+    if dist_dir is not None:
+        cmd.extend(["--distpath", str(dist_dir)])
+    subprocess.run(cmd, check=True, cwd=str(REPO_ROOT))
 
 
-def build_gui():
-    """构建 GUI exe"""
-    subprocess.run([
-        "pyinstaller",
-        "--name", "hws-formal-math-viewer",
-        "--windowed",
-        "--hidden-import", "hws_formal_math.viewer.main",
-        "--collect-all", "PySide6",
-        "src/hws_formal_math/viewer/main.py"
-    ], check=True)
+def build_distribution() -> None:
+    """构建全部产物（先建临时目录，成功后替换 dist）"""
+    staging = REPO_ROOT / "dist.staging"
+    if staging.exists():
+        shutil.rmtree(staging)
 
+    build_cli(dist_dir=staging)
 
-def build_distribution():
-    """构建全部产物"""
-    # 清理
-    shutil.rmtree("dist", ignore_errors=True)
-    
-    # CLI
-    build_cli()
-    
-    # GUI
-    build_gui()
-    
-    # 源码包
-    subprocess.run(["python", "-m", "build", "--sdist"], check=True)
-    
-    # wheel
-    subprocess.run(["python", "-m", "build", "--wheel"], check=True)
+    # 源码包与 wheel 直接进 staging
+    subprocess.run(
+        [sys.executable, "-m", "build", "--sdist", "--wheel", "--outdir", str(staging)],
+        check=True,
+        cwd=str(REPO_ROOT),
+    )
+
+    dist = REPO_ROOT / "dist"
+    if dist.exists():
+        shutil.rmtree(dist)
+    staging.rename(dist)
 
 
 def compute_sha256(file_path: Path) -> str:
@@ -53,18 +55,23 @@ def compute_sha256(file_path: Path) -> str:
         return hashlib.sha256(f.read()).hexdigest()
 
 
-def generate_manifest():
-    """生成产物清单"""
+def generate_manifest(dist_dir: Path | None = None) -> list:
+    """生成产物清单（确定性：按文件名排序）"""
+    target = dist_dir or (REPO_ROOT / "dist")
     manifest = []
-    for file_path in Path("dist").iterdir():
+    for file_path in sorted(target.iterdir(), key=lambda p: p.name):
         if file_path.is_file():
             manifest.append({
                 "file": file_path.name,
                 "size": file_path.stat().st_size,
-                "sha256": compute_sha256(file_path)
+                "sha256": compute_sha256(file_path),
             })
     return manifest
 
 
 if __name__ == "__main__":
+    from _encoding import ensure_utf8_stdio
+
+    ensure_utf8_stdio()
     build_distribution()
+    print(json.dumps(generate_manifest(), ensure_ascii=False, indent=2))

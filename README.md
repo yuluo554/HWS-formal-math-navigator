@@ -2,6 +2,10 @@
 
 形式化数学库导航与证明骨架生成器。
 
+[![CI](https://github.com/yuluo554/HWS-formal-math-navigator/actions/workflows/ci.yml/badge.svg)](https://github.com/yuluo554/HWS-formal-math-navigator/actions/workflows/ci.yml)
+
+**状态**：✅ v0.1.0 已发布（[Release](https://github.com/yuluo554/HWS-formal-math-navigator/releases/tag/v0.1.0)）
+
 ## 项目定位
 
 LLM 聊数学会"看起来对"，Lean 内核只认真假。本工具把**长上下文检索**（在超大 mathlib4 库中找可复用定理）与**证明骨架生成**接在**可执行的证明检查器**上，让"生成的证明"从"读着像对"变成**可判定的对象**。
@@ -13,11 +17,29 @@ LLM 聊数学会"看起来对"，Lean 内核只认真假。本工具把**长上�
 - **内核验证**：Lean 4 内核硬真值，sorry 不计入成功
 - **依赖图**：确定性图算法，断链检出，index_gap 区分
 
+## 下载即用
+
+从 [Release v0.1.0](https://github.com/yuluo554/HWS-formal-math-navigator/releases/tag/v0.1.0) 下载 `hws-formal-math.exe`（Windows，免安装）。
+
+```bash
+# 校验下载件（PowerShell / cmd）
+certutil -hashfile hws-formal-math.exe SHA256
+# 期望：31bb6c7daf695a03009a778e106282aa83de65ee33b43740489e793ca9defa5b
+
+# 自检（索引数据随 exe 分发，无需额外下载）
+hws-formal-math.exe selftest
+
+# 检索（离线可用）
+hws-formal-math.exe search "加法结合律"
+```
+
+> **注意**：exe 为 **onedir** 形态（`hws-formal-math.exe` 与 `_internal/` 需同目录）；单独拷贝 exe 会因缺数据目录而自检失败。
+
 ## 前置条件
 
 ### 必需
 
-- **Python 3.8+**
+- **Python 3.8+**（源码安装时）
 
 ### 可选（功能分级）
 
@@ -73,21 +95,40 @@ pip install -e ".[dev]"
 ## 快速开始
 
 ```bash
-# 检索定理
+# 自检（索引可读性 + 引擎初始化）
+hws-formal-math selftest
+
+# 检索定理（离线可用，零模型依赖）
 hws-formal-math search "加法结合律"
 
-# 生成骨架（需配置模型端点）
-hws-formal-math generate "∀ n : ℕ, n + 0 = n"
+# 运行基准（检索 Recall@k/MRR + 依赖图完整率）
+hws-formal-math bench --suite retrieval
+hws-formal-math bench --suite depgraph
 
-# 验证 Lean 代码（需安装 Lean）
-hws-formal-math verify "theorem add_zero (n : ℕ) : n + 0 := by simp"
+# 生成骨架（需配置模型端点；未配置时接受已形式化的 Lean 声明）
+hws-formal-math generate "theorem my_thm (n : ℕ) : n + 0 = n := by sorry"
 
-# 运行基准
-hws-formal-math bench
-
-# 自检
-hws-formal-math selftest
+# 验证 Lean 代码（需安装 Lean 工具链；未装时如实标注"未执行"）
+hws-formal-math verify "theorem add_zero (n : ℕ) : n + 0 = n := by simp"
 ```
+
+### 退出码语义
+
+| 码 | 语义 |
+|----|------|
+| 0 | 成功 / 基准达标 |
+| 1 | 未达标（检索无结果、基准未通过） |
+| 2 | 用法错误（参数错误、套件名未知） |
+| 3 | 依赖缺失（如 Lean 未安装） |
+| 4 | 配置错误 |
+
+### 基准套件状态
+
+| 套件 | 依赖 | 无 Lean 时 |
+|------|------|-----------|
+| `retrieval` | 索引数据（随包） | ✅ 可用 |
+| `depgraph` | 索引数据（随包） | ✅ 可用 |
+| `skeleton` | Lean 内核真值 + 预置快照 | ⚠️ 报告 `not_enabled`（**不冒充通过**） |
 
 ## 项目结构
 

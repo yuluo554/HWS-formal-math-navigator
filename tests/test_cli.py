@@ -99,9 +99,9 @@ class TestCLI:
             encoding='utf-8'
         )
 
-        # 自然语言输入，模型关闭
+        # 自然语言输入，模型关闭 → 依赖缺失(3)：需要模型端点才能形式化
         result = main(["--index-path", str(index_dir), "generate", "加法结合律", "--no-model"])
-        assert result == ExitCode.FAILURE
+        assert result == ExitCode.DEPENDENCY_MISSING
 
     def test_verify_basic(self, tmp_path, capsys):
         """验证命令"""
@@ -115,8 +115,9 @@ class TestCLI:
 
         lean_code = "theorem add_assoc (a b c : Nat) : a + b + c = a + (b + c) := by rfl"
         result = main(["--index-path", str(index_dir), "verify", lean_code])
-        # 无 Lean 时返回 FAIL（SKIPPED 状态）
-        assert result == ExitCode.FAILURE
+        # 退出码契约（plan/04-测试与验收.md §2.2）：Lean 未安装 = 依赖缺失(3)，
+        # 不是"验证失败(1)"——SKIPPED 与 FAIL 语义不同
+        assert result == ExitCode.DEPENDENCY_MISSING
 
 
 class TestCLIDeterministic:

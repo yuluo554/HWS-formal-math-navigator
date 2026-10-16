@@ -1,5 +1,5 @@
 # CI 工作流
-# 测试 + 构建 + 发布
+# 测试（四矩阵）+ 构建 + 发布
 name: CI
 
 on:
@@ -13,10 +13,12 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        python-version: [3.8, 3.12]
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.8", "3.12"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,20 +28,52 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      # 编码守卫：CI job 里 python 不是我们敲的命令、没有 -X utf8，
+      # 且子进程解码走 locale —— 故在 job 级设 PYTHONUTF8（救全部步骤）
       - name: Enable UTF-8
         run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
+        shell: bash
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
       - name: Run tests
-        run: |
-          pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short
 
       - name: Run coverage
+        run: pytest tests/ --cov=src/hws_formal_math --cov-report=xml
+
+      # 安装面第四面：裸 console-script 与 python -m 是两条通路
+      # （sys.path 来源不同），只跑一种会漏掉"我们的包没进安装面"这类缺陷
+      - name: Smoke test (bare console script)
+        run: hws-formal-math selftest
+
+      - name: Smoke test (python -m)
+        run: python -m hws_formal_math selftest
+
+      # 基准达标验证（run 得动的套件）。skeleton 套件需 Lean 内核真值，
+      # CI 无 Lean → 该套件按 not_enabled 报告（不冒充通过），故单跑另两套。
+      - name: Benchmark (retrieval + depgraph)
         run: |
-          pytest tests/ --cov=src/hws_formal_math --cov-report=xml
+          hws-formal-math bench --suite retrieval
+          hws-formal-math bench --suite depgraph
+
+      # 断言"未启用"套件被如实报告（不冒充通过）
+      - name: Assert skeleton suite reports not_enabled
+        run: |
+          python - <<'PY'
+          import subprocess, sys
+          r = subprocess.run([sys.executable, "-m", "hws_formal_math", "bench", "--suite", "skeleton"],
+                               capture_output=True, text=True, encoding="utf-8")
+          out = r.stdout + r.stderr
+          assert "未启用" in out, out
+          assert r.returncode == 1, f"未启用套件应 exit 1，实际 {r.returncode}"
+          print("OK: skeleton suite honestly reports not_enabled")
+          PY
+        shell: bash
 
   build:
     runs-on: ubuntu-latest
@@ -51,30 +85,39 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          env: PYTHONUTF8=1
+
+      - name: Enable UTF-8
+        run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -e ".[dev]"
           pip install build pyinstaller
 
       - name: Build sdist
-        run: |
-          python -m build --sdist
+        run: python -m build --sdist
 
       - name: Build wheel
-        run: |
-          python -m build --wheel
+        run: python -m build --wheel
 
       - name: Build CLI exe
+        run: pyinstaller --noconfirm tools/hws-formal-math.spec
+
+      - name: Verify frozen exe (selftest + bench)
         run: |
-          pyinstaller --name hws-formal-math --console --hidden-import hws_formal_math.cli src/hws_formal_math/cli.py --distpath dist
+          dist/hws-formal-math selftest
+          dist/hws-formal-math bench --suite retrieval
+          dist/hws-formal-math bench --suite depgraph
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/hws-formal-math
 
   release:
     runs-on: ubuntu-latest

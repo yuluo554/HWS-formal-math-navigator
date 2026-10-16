@@ -1,1 +1,14 @@
-{"version": "1.0", "sha256": "placeholder", "generation_date": "2026-10-16", "case_count": 0, "domains": ["algebra", "analysis", "number_theory", "combinatorics"]}
+{
+  "case_count": 10,
+  "domains": [
+    "algebra",
+    "analysis",
+    "combinatorics",
+    "number_theory"
+  ],
+  "generation_date": "2026-01-01",
+  "latest": "v1",
+  "notes": "预置模型输出快照（规则模式生成，证明体为 by sorry 占位）。逐版本明细见 v1/manifest.json。",
+  "sha256": "fcf7aaf7a075f09d2a578b5ddb69ada4b5a9ad83c9bb9cd36afcda5e30d6012b",
+  "version": "1.0"
+}

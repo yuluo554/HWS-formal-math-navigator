@@ -5,11 +5,14 @@ __pycache__/
 .eggs/
 build/
 dist/
+dist.new/
+dist.staging/
 *.spec.bak
 
 # Environments
 .env
 .venv/
+.venv_test/
 venv/
 env/
 

@@ -365,7 +365,10 @@ def generate_hard_proposition(index: int) -> Dict[str, Any]:
 
 if __name__ == "__main__":
     import argparse
-    
+    from _encoding import ensure_utf8_stdio
+
+    ensure_utf8_stdio()
+
     parser = argparse.ArgumentParser(description="生成合成命题集")
     parser.add_argument(
         "--output",

@@ -1,11 +1,19 @@
 """CLI 入口"""
 
+import json
+import os
 import sys
 import argparse
 from pathlib import Path
+from typing import Optional
 
 from .config import Config
-from .exceptions import ExitCode, HWSFormalMathError, IndexNotFoundError
+from .exceptions import (
+    ExitCode,
+    HWSFormalMathError,
+    IndexNotFoundError,
+    ModelDisabledError,
+)
 from .logging import setup_logging
 from .core import Orchestrator, ReportGenerator, ReportConfig
 
@@ -27,8 +35,8 @@ def create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--index-path",
         type=Path,
-        default=Path("data/index"),
-        help="索引目录路径（默认: data/index）"
+        default=None,
+        help="索引目录路径（默认: 随包 data/index）"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -133,7 +141,11 @@ def handle_search(args, config: Config) -> int:
 
 
 def handle_generate(args, config: Config) -> int:
-    """处理 generate 命令"""
+    """处理 generate 命令
+
+    退出码语义（plan/04-测试与验收.md §2.2）：
+      0 = 骨架生成成功；1 = 生成失败；2 = 参数错误；3 = 模型未配置
+    """
     logger.info(f"生成骨架: {args.proposition}")
     try:
         orchestrator = Orchestrator(config)
@@ -145,6 +157,9 @@ def handle_generate(args, config: Config) -> int:
         print("=== 证明骨架 ===")
         print(skeleton)
         return ExitCode.SUCCESS
+    except ModelDisabledError as e:
+        logger.error(f"骨架生成失败: {e}")
+        return ExitCode.DEPENDENCY_MISSING
     except Exception as e:
         logger.error(f"骨架生成失败: {e}")
         return ExitCode.FAILURE
@@ -178,31 +193,98 @@ def handle_verify(args, config: Config) -> int:
             for w in result["warnings"]:
                 print(f"  - {w}")
 
-        return ExitCode.SUCCESS if status == "PASS_NO_SORRY" else ExitCode.FAILURE
+        # 退出码语义（plan/04-测试与验收.md §2.2）：
+        #   0 = 验证通过（PASS_NO_SORRY）
+        #   1 = 验证失败（FAIL / 含 sorry 未证明）
+        #   3 = 依赖缺失（Lean 未安装 → SKIPPED，非"验证失败"）
+        if status == "PASS_NO_SORRY":
+            return ExitCode.SUCCESS
+        if status == "SKIPPED":
+            return ExitCode.DEPENDENCY_MISSING
+        return ExitCode.FAILURE
     except Exception as e:
         logger.error(f"验证失败: {e}")
         return ExitCode.FAILURE
 
 
 def handle_bench(args, config: Config) -> int:
-    """处理 bench 命令"""
+    """处理 bench 命令
+
+    退出码语义（plan/04-测试与验收.md §二）：
+      0 = 基准达标；1 = 基准未达标；2 = 用法错误（套件名/用例文件缺失）
+    """
+    from . import benchmark
+
+    fixtures_dir = _find_fixtures_dir()
+    if fixtures_dir is None:
+        logger.error("未找到基准用例目录 tests/fixtures（请从仓库根运行）")
+        return ExitCode.USAGE_ERROR
+
+    suites = [args.suite] if args.suite else None
     logger.info(f"运行基准: {args.suite or 'all'}")
-    # 基准测试通过 pytest 运行
-    import subprocess
-    import sys
 
-    cmd = [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"]
-    if args.suite:
-        # 映射套件到测试文件
-        suite_map = {
-            "retrieval": "test_retriever.py",
-            "skeleton": "test_skeleton_gen.py",
-            "depgraph": "test_depgraph.py",
-        }
-        cmd.append(f"tests/{suite_map[args.suite]}")
+    try:
+        results = benchmark.run_all(
+            fixtures_dir, config.index_path, config=config, suites=suites
+        )
+    except benchmark.BenchError as e:
+        logger.error(f"基准运行失败: {e}")
+        return ExitCode.USAGE_ERROR
 
-    result = subprocess.run(cmd, cwd=Path(__file__).parent.parent)
-    return result.returncode
+    selected = suites or list(benchmark.ALL_SUITES)
+    for name in selected:
+        _print_suite_result(results[name])
+
+    if args.report:
+        report_path = Path("bench-report.json")
+        with open(report_path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2, sort_keys=True)
+            f.write("\n")
+        print(f"报告已写入: {report_path}")
+
+    return ExitCode.SUCCESS if results["all_passed"] else ExitCode.FAILURE
+
+
+def _find_fixtures_dir() -> Optional[Path]:
+    """定位基准用例目录（源码态在仓库根，冻结态在 exe 同级）"""
+    candidates = [
+        Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures",
+        Path.cwd() / "tests" / "fixtures",
+        Path(getattr(sys, "_MEIPASS", Path.cwd())) / "tests" / "fixtures",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def _print_suite_result(result: dict) -> None:
+    """打印单个套件结果"""
+    suite = result["suite"]
+
+    if result.get("not_enabled", False):
+        reason = result.get("not_enabled_reason", "unknown")
+        print(f"[{suite}] 未启用（{reason}）")
+        print(f"  {result.get('notes', '')}")
+        return
+
+    status = "达标" if result["passed"] else "未达标"
+    print(f"[{suite}] {status}")
+
+    if suite == "retrieval":
+        print(f"  用例数: {result['total_cases']}")
+        print(f"  Recall@10: {result['recall_at_10']} (阈值 {result['thresholds']['recall_at_10_min']})")
+        print(f"  MRR: {result['mrr']} (阈值 {result['thresholds']['mrr_min']})")
+    elif suite == "skeleton":
+        print(f"  用例数: {result['total_cases']}")
+        print(f"  PASS_NO_SORRY: {result['pass_no_sorry_rate']} (阈值 {result['thresholds']['pass_no_sorry_min']})")
+        print(f"  PASS_WITH_SORRY: {result['pass_with_sorry_rate']} (阈值 {result['thresholds']['pass_with_sorry_min']})")
+    elif suite == "depgraph":
+        print(f"  用例数: {result['total_cases']}")
+        print(f"  完整率: {result['completeness']} (阈值 {result['thresholds']['completeness_min']})")
+        print(f"  断链检出率: {result['broken_ref_detection_rate']}")
+        print(f"  index_gap 区分率: {result['index_gap_discrimination_rate']}")
+
 
 
 def handle_selftest(config: Config) -> int:
@@ -241,6 +323,18 @@ def handle_selftest(config: Config) -> int:
             print(f"✅ 模型已启用: {config.model.model}")
         else:
             print(f"⚠️ 模型未启用（骨架生成将使用规则模式）")
+
+        # 冻结态：断言数据目录落在产物内（"数据随包走"的产物级核验）
+        # 注意：不用 Path.is_relative_to（3.9+），本项目底线 3.8 —— 用 str 前缀比较
+        from .config import is_frozen
+        if is_frozen():
+            data_root = str(Path(sys._MEIPASS).resolve())
+            index_str = str(config.index_path.resolve())
+            if index_str == data_root or index_str.startswith(data_root + os.sep):
+                print(f"✅ 冻结态数据目录随包: {config.index_path}")
+            else:
+                print(f"❌ 冻结态数据目录不在产物内: {config.index_path}")
+                return ExitCode.FAILURE
 
         return ExitCode.SUCCESS
     except Exception as e:

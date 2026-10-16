@@ -1,1 +1,12 @@
-[{"id": "case_001", "query": "加法结合律", "ground_truth": ["add_assoc"], "domain": "algebra", "difficulty": "easy"}, {"id": "case_002", "query": "对任意正整数 n，n 的平方大于等于 n", "ground_truth": ["Nat.pow_le_self", "Nat.le_self"], "domain": "number_theory", "difficulty": "medium"}]
+[
+  {"id": "case_001", "query": "加法结合律", "ground_truth": ["add_assoc"], "domain": "algebra", "difficulty": "easy"},
+  {"id": "case_002", "query": "对任意正整数 n，n 的平方大于等于 n", "ground_truth": ["pow_le_self", "pow_two_le_self"], "domain": "number_theory", "difficulty": "medium"},
+  {"id": "case_003", "query": "乘法交换律", "ground_truth": ["mul_comm"], "domain": "algebra", "difficulty": "easy"},
+  {"id": "case_004", "query": "导数", "ground_truth": ["deriv_cos", "deriv_exp", "deriv_sin", "deriv_pow"], "domain": "analysis", "difficulty": "medium"},
+  {"id": "case_005", "query": "二项式系数", "ground_truth": ["choose_one", "choose_self", "choose_succ_succ", "choose_zero"], "domain": "combinatorics", "difficulty": "medium"},
+  {"id": "case_006", "query": "阶乘为正", "ground_truth": ["factorial_pos"], "domain": "combinatorics", "difficulty": "easy"},
+  {"id": "case_007", "query": "加法交换律", "ground_truth": ["add_comm"], "domain": "algebra", "difficulty": "easy"},
+  {"id": "case_008", "query": "零的幂", "ground_truth": ["pow_zero"], "domain": "number_theory", "difficulty": "easy"},
+  {"id": "case_009", "query": "add_assoc", "ground_truth": ["add_assoc"], "domain": "algebra", "difficulty": "easy"},
+  {"id": "case_010", "query": "distributive", "ground_truth": ["left_distrib", "right_distrib"], "domain": "algebra", "difficulty": "medium"}
+]

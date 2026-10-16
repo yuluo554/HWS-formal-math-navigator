@@ -49,51 +49,77 @@
 
 ### 2.2 M6 DoD 要点
 
-- [x] CI 首跑全绿（ubuntu 3.8 / ubuntu 3.12）— **CI 实跑成功**（run 38847852361，test 3.8 ✅ + test 3.12 ✅ + build ✅）
-- [x] README 状态行转正（M5 完成 → M6 收尾）— plan/00-README总览.md 已更新
-- [x] 缓议项清零（含显式"跳过"决策，汇总成逐条全表落档）— plan/DEFERRED-ITEMS.md 已创建
-- [x] 发布后元信息终检（topics、release assets/digest 与留档一致）— plan/RELEASE-M6.md 已创建
+- [x] CI 首跑全绿（**四矩阵** ubuntu/windows × 3.8/3.12）— ✅ 实跑成功（run 38853699358 起多轮全绿）
+- [x] README 状态行转正 — CI 徽章 + "✅ v0.1.0 已发布" + 下载即用节
+- [x] 缓议项清零 — `plan/DEFERRED-ITEMS.md`（14 项 + §六 12 项复核发现）
+- [x] 发布后元信息终检 — topics 已设并回读；assets/digest 与台账一致
+- [x] **发布物本体复核**（M6 新增，发现 12 项 M5 遗留真实缺陷）— 见 §2.5
 
 ### 2.3 M6 待办清单
 
-| # | 任务 | 优先级 | 预估时间 | 状态 |
-|---|------|--------|----------|------|
-| 1 | CI 首跑全绿 | 高 | 2h | ✅ 完成（run 38847852361，test 3.8 ✅ + test 3.12 ✅ + build ✅） |
-| 2 | README 状态行转正 | 高 | 0.5h | ✅ 完成 |
-| 3 | 缓议项清零 | 高 | 1h | ✅ 完成（plan/DEFERRED-ITEMS.md） |
-| 4 | 发布后元信息终检 | 中 | 0.5h | ✅ 完成（plan/RELEASE-M6.md） |
+| # | 任务 | 状态 |
+|---|------|------|
+| 1 | CI 首跑全绿（四矩阵） | ✅ 完成 |
+| 2 | README 状态行转正 | ✅ 完成 |
+| 3 | 缓议项清零 | ✅ 完成 |
+| 4 | 发布后元信息终检 | ✅ 完成 |
+| 5 | **发布物本体复核 + 缺陷修复 + 附件修订** | ✅ 完成（用户授权） |
 
 ### 2.4 CI 修复记录
 
 | 问题 | 详情 | 修复 |
 |------|------|------|
 | setup-python env 参数无效 | `env: PYTHONUTF8=1` 被 actions/setup-python@v5 拒绝 | 改为 `echo "PYTHONUTF8=1" >> $GITHUB_ENV` |
-| build 模块缺失 | `python -m build --sdist` 报错 "No module named build" | 在 install dependencies 步骤添加 `pip install build` |
+| build 模块缺失 | `python -m build --sdist` 报 "No module named build" | 安装步骤加 `pip install build` |
+| onedir 路径错（test×1 + release×1） | `dist/hws-formal-math` 是目录，exe 在子目录 | 路径改为 `./dist/hws-formal-math/hws-formal-math` |
+| 自动发 Release 不可行 | PyInstaller 不跨机字节一致 → 附件哈希必与台账不符 | 移除 `release: published` 触发，改本地确定性构建 + 手工上传 |
 
-### 2.5 CI 实跑结果（run 38847852361）
+### 2.5 发布物本体复核（M6 核心价值）
+
+M5 声称"发布与交付完成"，但**发布物本体从未验证过**。M6 真下载 v0.1.0 附件跑通验证后，暴露 12 项真实缺陷：
+
+| 类别 | 缺陷 | 修复 |
+|------|------|------|
+| 🔴 致命 | 发布 exe 完全不可用（`selftest` 报"索引目录不存在"） | 冻结态数据目录解析（`_MEIPASS`）+ spec datas |
+| 🔴 致命 | `bench` 是 pytest 包装桩（cwd 错、`--suite` 失效、无指标） | 实现 `benchmark` 模块 |
+| 🔴 假门 | `test_bench_probe.py` 是 3 个空 `pass` 桩 | 11 项双向对照探活 + 变异验证 |
+| 🔴 语义 | depgraph 违反 K2（已覆盖模块被判 index_gap） | 模块覆盖集判定（原 `_is_module_covered` 有死循环） |
+| 🟠 | 循环导入 / spec 硬编码本机路径 / 快照生成器是桩 / 无 LICENSE / tools 无编码守卫 / 退出码违约 / fixtures 真值不存在 / README 命令返回空 | 逐项修复（详见 RELEASE-M6 §二） |
+
+**发布附件修订**（用户授权，0 下载零消费者窗口）：tag 迁移 → 替换 4 个附件 → Release 转正 →
+**匿名**真下载复核（sha256 一致 + 中立目录 selftest/search/bench 通过）。
+
+### 2.6 CI 实跑结果（最终形态）
 
 | Job | 结论 |
 |-----|------|
-| test (3.8) | ✅ success |
-| test (3.12) | ✅ success |
-| build | ✅ success |
-| release | ⏸ skipped |
+| test (ubuntu-latest, 3.8) | ✅ success |
+| test (ubuntu-latest, 3.12) | ✅ success |
+| test (windows-latest, 3.8) | ✅ success |
+| test (windows-latest, 3.12) | ✅ success |
+| build（含 exe 冒烟 + 打包确定性自测） | ✅ success |
 
-### 2.6 本地等价校验结果
+> 说明：`release: published` 触发与自动发 Release job 已移除（PyInstaller 不跨机字节一致，
+> 自动上传会让附件哈希对账失效）；CI 职责 = 验证，发布附件走本地确定性构建 + 手工上传。
+
+### 2.7 本地等价校验结果
 
 | 检查项 | 结果 | 证据 |
 |--------|------|------|
-| 全量测试（Python 3.12） | ✅ 169 passed | pytest tests/ 全绿 |
-| 全量测试（Python 3.8） | ✅ 169 passed | 双解释器全绿 |
-| 构建产物 sha256 对账 | ✅ 一致 | 本地与 GitHub API 返回一致 |
-| 脱敏扫描 | ✅ 通过 | 无敏感信息泄露 |
+| 全量测试（Python 3.12） | ✅ 185 passed | pytest tests/ 全绿 |
+| 全量测试（Python 3.8） | ✅ 185 passed | 双解释器全绿 |
+| 冻结态 exe（中立目录） | ✅ selftest/search/bench 通过 | 真下载附件实测 |
+| 构建产物 sha256 对账 | ✅ 一致 | 本地台账 vs GitHub API digest |
+| 打包确定性 | ✅ 两次独立打包逐字节一致 | `tools/package_release.py` 双跑 |
+| 脱敏扫描 | ✅ 通过（HEAD）| 无用户名/邮箱/密钥；历史残留见 RELEASE-M6 §九 |
 
-### 2.7 已知偏差
+### 2.8 已知偏差
 
 | 偏差 | 说明 | 处置 |
 |------|------|------|
-| CI 仅 ubuntu-latest | 未覆盖 windows 矩阵 | 扩展项；本地等价校验通过 |
-| GitHub Topics 未设置 | gh 未认证 | 网络恢复后手动设置 |
+| 历史残留 | M5 spec 硬编码路径仍在 2 个历史 blob | **定夺不重写**（非 HARD 级、无个人标识、HEAD 已清），理由留档 RELEASE-M6 §九 |
+| `3c6ae35` release run 失败 | 被移除的旧触发留下的陈旧记录 | 如实登记，不删 run |
+| skeleton 基准在 CI 报 not_enabled | CI 无 Lean 内核真值 | 设计如此（不冒充通过）；断言已进 CI |
 
 ---
 
@@ -407,5 +433,6 @@ gh release create v0.1.0 dist/* --notes "Release v0.1.0"
 
 ---
 
-> **本文件状态**：✅ v1 定稿（2026-10-16）
-> **下一步**：设置 GitHub topics（待 gh 认证）；windows CI 矩阵列入扩展项
+> **本文件状态**：✅ v2 定稿（2026-10-16，含发布物本体复核与附件修订记录）
+> **项目状态**：**M1–M6 全部里程碑达成，项目完结**。发布物本体已验（匿名真下载复核通过）；CI 四矩阵全绿；缓议项清零。
+> **遗留项**：历史残留（spec 路径，定夺不重写）；跨平台 exe（Linux/macOS 未打包）。

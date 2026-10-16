@@ -65,9 +65,9 @@ sha256sum <下载件>
 
 | 检查项 | 结果 |
 |--------|------|
-| 下载件 sha256 与留档一致 | ✅（M5 附件）；M6 重建附件重算 |
+| 下载件 sha256 与留档一致 | ✅ M6 重建附件（`42ad6af5…` 逐位一致，含**匿名**裸 https 下载复验） |
 | 中立目录 selftest | ❌ **M5 附件失败**（D1）→ ✅ M6 重建附件通过 |
-| 中立目录 bench | ❌ **M5 附件失败**（D2）→ ✅ M6 重建附件通过 |
+| 中立目录 search / bench | ❌ **M5 附件失败**（D2）→ ✅ M6 重建附件通过 |
 | 冻结态数据随包断言 | ✅（`✅ 冻结态数据目录随包`） |
 
 > **口径说明**：§四 验的是**从 GitHub 真下载回来的文件**；与"本机 dist 冻结态验收"是两回事
@@ -75,35 +75,48 @@ sha256sum <下载件>
 
 ## 五、CI 对账
 
-**规则（权威）**：`gh api repos/<u>/<r>/actions/runs --jq '.total_count'` 应等于该仓收到的
-**push/tag 事件数**（一次事件恰一 run，一次 push 推多个提交仍只算 1 个 run）。
+**规则（权威）**：`gh api repos/<u>/<r>/actions/runs` 逐条列 `head_sha`+`event`+`conclusion`，
+与本地 `git log` 对齐——**每个 push/tag 事件恰一 run**（一次 push 推多个提交仍只算 1 个 run）。
 
-**快照**（截至本文件所在提交）：
+**逐 sha 快照**（截至本文件所在提交；本文件自身的提交还会再产生 1 个 run）：
 
 | 提交 | 事件 | 结论 | 说明 |
 |------|------|------|------|
-| a31a75c | push | ❌ failure | M5 收尾，CI 配置有误 |
-| a0eefbd | push/release | ❌ failure | M5 发布，同上 |
-| 28d0eae | push | ✅ success | CI 配置修复（test×2+3.8/3.12 单 OS） |
-| c52a646 | push | ✅ success | README 状态行转正 |
-| 08ccbd5 | push | ✅ success | RELEASE-M6 初版 |
+| a31a75c | push | ❌ failure | M5 收尾，CI 配置有误（setup-python 无效 env 参数 + 缺 build 模块） |
+| a0eefbd | push + release | ❌ failure | M5 发布，同上 |
+| 28d0eae | push | ✅ success | CI 配置修复 |
+| c52a646 / 08ccbd5 | push | ✅ success | README 转正 / RELEASE 初版 |
 | 4fa63b3 | push | ❌ failure | **四矩阵已全绿**，build job 因 onedir 路径错红一轮 |
-| 6987289 | push | ✅ success | 四矩阵 + build **全绿** |
+| 6987289 | push | ✅ success | 四矩阵 + build 全绿 |
+| 42a4a7c / 2b76120 | push | ✅ success | 文档回写 |
+| 2b76120 | release | ❌ failure | tag 触发的 release job 对 onedir 目录跑 `sha256sum` |
+| 3c6ae35 | push | ✅ success | release job 修复（确定性打包器） |
+| 3c6ae35 | release | ❌ failure | **旧 workflow 修订**的陈旧 run（当时 `release: published` 触发仍在） |
+| 24f963b | push | ✅ success | **移除自动发 Release** + build job 内打包确定性自测 |
 
-**首跑诊断如实记录**：四矩阵扩展后首次实跑（4fa63b3）暴露一处**环境差异型**缺陷——
-onedir 布局下 `dist/hws-formal-math` 是**目录**，exe 在子目录内，CI 断言路径写错。
-修 CI 配置与测试环境依赖**不算动内核**（发布里程碑 DoD 明示边界）。修复后 6987289 全绿。
+**首跑诊断如实记录**（两轮，均为环境差异型，非业务逻辑缺陷）：
+1. `4fa63b3`：onedir 布局下 `dist/hws-formal-math` 是**目录**，exe 在子目录内 → CI 路径断言写错。
+2. `2b76120`(release)：同因，release job 对目录跑 `sha256sum`。
+
+**发布模型定夺（重要）**：移除 `release: published` 触发与自动发 Release job，原因两条：
+① **PyInstaller 产物不承诺跨机字节一致**——CI 构建的 exe 哈希必与本地台账不同，自动上传会让
+"附件哈希可对账"这一承诺失效；② 该触发与发版动作形成**重跑循环**。
+故最终形态 = **CI 只验证**（四矩阵测试 + exe 能构建能运行 + 打包确定性自测），
+**发布附件走本地确定性构建 + 手工上传 + sha256 入台账**。
+`3c6ae35` 的那次 release 失败 run 属**被移除的旧触发**留下的陈旧记录，
+其 head_sha 指向的 workflow 修订已不含该 job——如实登记，不删 run（历史留痕面）。
 
 ## 六、收尾固化任务
 
 | 项 | 状态 | 证据 |
 |----|------|------|
-| CI 首跑全绿（四矩阵） | ✅ | run 38853699358：ubuntu/windows × 3.8/3.12 全 success |
-| README 状态行转正 | ✅ | 徽章 + "✅ v0.1.0 已发布" + 下载即用节 |
-| 缓议项清零 | ✅ | `plan/DEFERRED-ITEMS.md`（14 项逐条全表） |
-| 发布后元信息终检 | ⏳ | topics 待设；assets/digest 见 §三/§四 |
-| 发布物本体已验 | ✅ | §四（M6 重建附件，中立目录 selftest/bench 通过） |
-| 测试计数（当轮实测） | ✅ | 185 passed（3.8 与 3.12 双解释器，`pytest --collect-only` 实算） |
+| CI 首跑全绿（四矩阵） | ✅ | run 38853699358 / 38855312502 / 38855814967：ubuntu+windows × 3.8/3.12 全 success |
+| README 状态行转正 | ✅ | CI 徽章 + "✅ v0.1.0 已发布" + 下载即用节 + CI 矩阵说明 |
+| 缓议项清零 | ✅ | `plan/DEFERRED-ITEMS.md`（14 项 + §六 12 项复核发现） |
+| 发布后元信息终检 | ✅ | topics 已设并回读；assets/digest 见 §三/§四 |
+| 发布物本体已验 | ✅ | §四（**匿名**真下载 → sha256 一致 → 中立目录 selftest/search/bench 通过） |
+| 发布附件修订 | ✅ | §九（tag 迁移 + 附件替换 + Release 转正） |
+| 测试计数（当轮实测） | ✅ | 185 passed（3.8 与 3.12 双解释器实测） |
 
 ## 七、诚实口径与已知偏差
 
@@ -154,5 +167,5 @@ HEAD 已修（spec 现用 `SPECPATH` 相对推导），但**历史 blob 中仍�
 
 ---
 
-> **本文件状态**：✅ v3 定稿（2026-10-16，含发布修订执行记录与历史残留定夺）
+> **本文件状态**：✅ v4 定稿（2026-10-16，含发布修订执行记录、CI 对账、历史残留定夺）
 > **项目状态**：M1–M6 全部里程碑达成；发布物本体已验；CI 四矩阵全绿

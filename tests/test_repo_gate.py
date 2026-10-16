@@ -24,11 +24,11 @@ README = REPO_ROOT / "README.md"
 # 冻结名单制：不用 sys.stdlib_module_names（3.10+ 才有，3.8 上是空集 →
 # 会把每个标准库都判成第三方 → 全量假红）
 STDLIB_ALLOWLIST = {
-    "__future__", "argparse", "collections", "contextlib", "copy", "datetime",
-    "dataclasses", "enum", "functools", "hashlib", "io", "itertools", "json",
-    "logging", "math", "os", "pathlib", "random", "re", "shutil", "string",
-    "subprocess", "sys", "tempfile", "textwrap", "time", "typing", "unittest",
-    "warnings", "ast",
+    "__future__", "argparse", "ast", "collections", "contextlib", "copy",
+    "datetime", "dataclasses", "enum", "functools", "hashlib", "importlib",
+    "io", "itertools", "json", "logging", "math", "os", "pathlib", "platform",
+    "random", "re", "shutil", "string", "subprocess", "sys", "tempfile",
+    "textwrap", "time", "typing", "unittest", "warnings", "zipfile",
 }
 
 # 本项目自有顶层包（非第三方）
@@ -187,3 +187,172 @@ class TestFrozenDataGate:
         manifest = json.loads((REPO_ROOT / "data" / "snapshots" / "manifest.json").read_text(encoding="utf-8"))
         assert manifest.get("sha256") != "placeholder", "快照 manifest 仍是 placeholder"
         assert manifest.get("case_count", 0) > 0, "快照 case_count 为 0"
+
+
+class TestReleasePackagingGate:
+    """发布打包器守门（跨平台附件）"""
+
+    def _pkg(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "package_release", str(TOOLS_DIR / "package_release.py")
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_platform_suffix_is_not_hardcoded(self):
+        """平台后缀必须**随平台实算**，不得写死
+
+        关键技术点（本轮变异验证抓出的假门）：不能只断言"后缀等于当前平台的值"——
+        在 Windows 上跑时，写死的 `win64` 恰好等于正确值，门**恒绿**（假门）。
+        正解 = 用 monkeypatch **伪造 `sys.platform`/`platform.machine()`** 再断言输出随之变化，
+        这样与"当前跑在哪个平台"解耦：写死后缀的实现，在伪造 linux 时立刻暴露。
+        """
+        module = self._pkg()
+
+        # Linux x86_64
+        monkeypatch_target = module
+        orig_platform, orig_machine = module.sys.platform, module.platform.machine
+        try:
+            module.sys.platform = "linux"
+            module.platform.machine = lambda: "x86_64"
+            assert module.platform_suffix() == "linux-x86_64", module.platform_suffix()
+
+            # Linux arm64
+            module.platform.machine = lambda: "aarch64"
+            assert module.platform_suffix() == "linux-arm64", module.platform_suffix()
+
+            # macOS arm64
+            module.sys.platform = "darwin"
+            module.platform.machine = lambda: "arm64"
+            assert module.platform_suffix() == "macos-arm64", module.platform_suffix()
+
+            # macOS x86_64
+            module.platform.machine = lambda: "x86_64"
+            assert module.platform_suffix() == "macos-x86_64", module.platform_suffix()
+
+            # Windows
+            module.sys.platform = "win32"
+            module.platform.machine = lambda: "AMD64"
+            assert module.platform_suffix() == "win64", module.platform_suffix()
+        finally:
+            module.sys.platform = orig_platform
+            module.platform.machine = orig_machine
+
+    def test_platform_suffix_varies_with_platform(self):
+        """阴性对照：后缀必须随平台**变化**（写死实现的直接判据）"""
+        module = self._pkg()
+
+        orig_platform, orig_machine = module.sys.platform, module.platform.machine
+        try:
+            module.sys.platform = "linux"
+            module.platform.machine = lambda: "x86_64"
+            linux = module.platform_suffix()
+
+            module.sys.platform = "darwin"
+            module.platform.machine = lambda: "arm64"
+            macos = module.platform_suffix()
+
+            assert linux != macos, f"平台后缀未随平台变化（疑似写死）: {linux} == {macos}"
+            assert linux.startswith("linux-") and macos.startswith("macos-")
+        finally:
+            module.sys.platform = orig_platform
+            module.platform.machine = orig_machine
+
+    def test_suffix_encodes_arch_where_applicable(self):
+        """架构须体现在后缀里（arm64 与 x86_64 不可同名，否则用户下错包）
+
+        注意：Windows 的后缀是 `win64`（无短横线），故只对 unix 平台断言含 `-<arch>`。
+        断言锚定"架构是否进入后缀"，不含别的判据（防张冠李戴）。
+        """
+        import sys as _sys
+
+        module = self._pkg()
+        source = (TOOLS_DIR / "package_release.py").read_text(encoding="utf-8")
+        assert "platform.machine()" in source, "平台后缀未实算架构"
+
+        suffix = module.platform_suffix()
+        if not _sys.platform.startswith("win"):
+            # linux-x86_64 / macos-arm64 形态：必须含短横线 + 架构段
+            assert "-" in suffix, f"unix 后缀应含架构段: {suffix}"
+            assert suffix.split("-", 1)[1] in ("x86_64", "arm64"), suffix
+
+    def test_exec_bit_preserved_in_zip(self, tmp_path):
+        """Unix 可执行位必须写进 zip（写死 0o644 会让 Linux/macOS 产物解压后不可执行）"""
+        module = self._pkg()
+
+        src = tmp_path / "dist" / "hws-formal-math"
+        src.mkdir(parents=True)
+        exe = src / "hws-formal-math"          # 无扩展名主程序
+        exe.write_bytes(b"\x7fELF fake")
+        exe.chmod(0o755)
+        lib = src / "libfoo.so"
+        lib.write_bytes(b"fake")
+        lib.chmod(0o644)                        # 共享库无 exec 位 → 兜底规则应补上
+        textual = src / "readme.txt"
+        textual.write_text("hi", encoding="utf-8")
+
+        zip_path = tmp_path / "out.zip"
+        module.build_zip(src, zip_path, "hws-formal-math")
+
+        import zipfile
+        with zipfile.ZipFile(zip_path) as zf:
+            perms = {i.filename.split("/")[-1]: (i.external_attr >> 16) & 0o777
+                     for i in zf.infolist()}
+
+        assert perms["hws-formal-math"] & 0o111, f"主程序缺可执行位: {oct(perms['hws-formal-math'])}"
+        assert perms["libfoo.so"] & 0o111, "共享库缺可执行位兜底"
+        assert not (perms["readme.txt"] & 0o111), "文本文件不应被标可执行"
+
+    def test_build_zip_is_deterministic(self, tmp_path):
+        """两次独立打包逐字节一致"""
+        module = self._pkg()
+        src = tmp_path / "d"
+        src.mkdir()
+        (src / "a.bin").write_bytes(b"AAA")
+        (src / "b.bin").write_bytes(b"BBB")
+
+        z1, z2 = tmp_path / "1.zip", tmp_path / "2.zip"
+        module.build_zip(src, z1, "root")
+        module.build_zip(src, z2, "root")
+        assert z1.read_bytes() == z2.read_bytes(), "打包不确定（顺序/时间戳漂移）"
+
+    def test_empty_source_is_loud(self, tmp_path):
+        """打包面为空必须大声失败（'成功但 files: 0' 是假绿）"""
+        module = self._pkg()
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        with pytest.raises(SystemExit):
+            module.build_zip(empty, tmp_path / "x.zip", "root")
+
+
+class TestCrossPlatformReleaseGate:
+    """跨平台发布链守门"""
+
+    def test_ci_builds_three_platforms(self):
+        """CI 必须构建三平台（在对应原生 runner 上——PyInstaller 不能交叉编译）"""
+        ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        assert "ubuntu-latest" in ci, "缺 Linux 构建"
+        assert "windows-latest" in ci, "缺 Windows 构建"
+        assert "macos-latest" in ci, "缺 macOS 构建"
+
+    def test_ci_smokes_frozen_exe_on_each_platform(self):
+        """每个平台必须原生冒烟冻结产物（Linux/macOS 产物的唯一本体证据）"""
+        ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        assert "Smoke test frozen exe (native)" in ci, "缺原生冒烟步骤"
+
+    def test_release_notes_file_exists(self):
+        """publish job 读 --notes-file，该文件必须存在（缺则发布步骤必红）"""
+        ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        if "--notes-file" in ci:
+            import re
+            m = re.search(r"--notes-file\s+(\S+)", ci)
+            assert m, "未解析到 notes 文件参数"
+            assert (REPO_ROOT / m.group(1)).is_file(), f"发布说明文件不存在：{m.group(1)}"
+
+    def test_readme_documents_three_platforms(self):
+        """README/发布说明必须写明三平台下载（否则用户不知道有 Linux/macOS 包）"""
+        notes = (REPO_ROOT / "RELEASE-NOTES.md").read_text(encoding="utf-8")
+        for token in ("win64", "linux-", "macos-"):
+            assert token in notes, f"发布说明缺平台标识: {token}"

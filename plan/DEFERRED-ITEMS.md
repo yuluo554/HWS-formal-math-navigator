@@ -19,7 +19,7 @@
 | D5 | 向量化检索（numpy + scikit-learn） | M3 设计 | ⬜ 跳过 | BM25 已满足首期需求；vector extra 已声明但 CI 不跑 |
 | D6 | 模型端点接入（OpenAI / llama.cpp） | M4 设计 | ⬜ 跳过 | 模型在环但默认关闭；首期不强制；config.yaml 已含配置模板 |
 | D7 | mathlib4 全量源码入仓 | M1 数据计划 | ⬜ 跳过 | 数 GB 体积，不适合入仓；版本化快照 + 索引元数据已满足需求 |
-| D8 | 跨平台 exe（Windows + Linux + macOS） | M5 发布 | ⏳ 延期 | CI 仅构建 sdist/wheel；exe 仅 Windows；Linux/macOS 列入扩展项 |
+| D8 | **跨平台 exe（Linux + macOS）** | M5 发布 | ✅ **完成**（M6 收尾） | CI 三平台原生构建 + 原生冒烟 + tag 触发发布；详见 §7.1 |
 | D9 | 中文 Lean 文档/教程 | M0 计划 | ⬜ 跳过 | 非工具功能；列入文档扩展项 |
 | D10 | 论文格式/文献审计 / AIGC 检测 | M0 弃选项 | ⬜ 跳过 | 与系列⑪文献审计工作台撞域；已显式弃选 |
 
@@ -78,10 +78,30 @@
 
 | 编号 | 延期项 | 后续行动 | 状态 |
 |------|--------|----------|------|
-| D8 | 跨平台 exe | 扩展项：Linux/macOS 打包 | 待定 |
+| D8 | 跨平台 exe | ✅ 已完成：CI 三平台原生构建（ubuntu/windows/macos）+ 原生冒烟 + tag 触发发布 | 结案 |
 | D11 | CI 首跑全绿 | ✅ 已完成（run 38853699358 四矩阵全绿） | 结案 |
 | D12 | Windows CI 矩阵 | ✅ 已完成（`matrix.os: [ubuntu-latest, windows-latest]`） | 结案 |
-| D13 | GitHub topics | M6 补齐并回读核验 | 进行中 |
+| D13 | GitHub topics | ✅ 已补齐并回读核验 | 结案 |
+
+### 7.1 D8 结案记录（跨平台 exe）
+
+**约束发现**：PyInstaller **不能交叉编译** —— Linux/macOS 产物只能在其原生 runner 上构建，
+且**只能在目标平台被真实运行验证**（Windows 开发机跑不了 ELF/Mach-O）。故"本机等效校验"
+在这两个平台上**不可得**，原生冒烟必须发生在 CI runner 内。
+
+**实现**：CI `build` job 三平台矩阵（`ubuntu-latest`/`windows-latest`/`macos-latest`），各自
+PyInstaller 原生构建 → 原生冒烟（`selftest` + `bench` ×2 + `search`）→ 确定性打包 →
+`suffix_glob` 断言平台标签正确。`publish` job 在 **tag 推送**时合成 Release（`--verify-tag`），
+并断言三平台产物 + sdist/wheel 齐备后才发布。
+
+**途中修的两个真缺陷**（都会让修复失效）：
+1. 打包器写死 `external_attr = 0o644` → **Linux/macOS 产物解压后不可执行**（zip 不保留 exec 位）。
+   改为按源树实算 + 对无扩展名主程序与 `.so`/`.dylib` 兜底。
+2. 平台后缀若写死 `win64` → 在 mac/linux 上错标。改为 `sys.platform` + `platform.machine()` 实算。
+
+**守门与变异验证**：新增 7 项打包器/跨平台守门。**首版探针是假门**——只断言"后缀 == 当前平台的值"，
+在 Windows 上跑时写死的 `win64` 恰好正确 → **变异后仍全绿**。改为 monkeypatch 伪造
+`sys.platform`/`platform.machine()` 后断言输出随之变化，变异（写死后缀）立刻变红、还原即绿。
 
 ---
 

@@ -1,17 +1,19 @@
 # CI 工作流
-# 测试（四矩阵）+ 构建验证
+# 测试（四矩阵）+ 三平台构建（原生冒烟）+ tag 推送时发布
 #
-# 发布模型说明：Release 附件由**本地确定性构建 + 手工上传**，sha256 记入
-# plan/RELEASE-M6.md 台账。CI **不**自动发 Release，原因：
-#   ① PyInstaller 产物不承诺跨机字节一致 —— CI 构建的 exe 哈希必与台账不同，
-#      自动上传会让"附件哈希可对账"失效；
-#   ② `release: published` 触发会与发版动作形成重跑循环。
-# CI 的职责 = **验证**（干净 runner 上四矩阵测试 + exe 能构建且能运行）。
+# 关键约束：
+#   ① **PyInstaller 不能交叉编译** —— Linux/macOS 产物只能在对应 runner 上构建；
+#      且该产物**只能在目标平台被真实运行验证**（本机 Windows 跑不了 ELF/Mach-O）。
+#      故"原生冒烟"必须发生在 CI runner 内，这是那两个平台唯一的本体证据。
+#   ② **PyInstaller 产物不承诺跨机字节一致** —— 所以台账记的是"本次上传件的哈希"
+#      （由 `gh api .../releases` 回读或下载件实算），不承诺重建可复现。
+#      可复跑的是"打包这步"（ZIP_STORED + 条目排序 + 固定时间戳 → 双打逐字节一致）。
 name: CI
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -81,8 +83,24 @@ jobs:
         shell: bash
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # suffix_glob 只断言"平台大类"（linux-*/win64/macos-*），不写死架构——
+          # runner 的 arch 会随镜像更新变化（macos-latest 可能是 arm64 或 x86_64），
+          # 写死会让断言在镜像换代时无故变红。真实后缀由打包器按 sys.platform 实算。
+          - os: ubuntu-latest
+            suffix_glob: "linux-*"
+            extra: "true"      # sdist/wheel 平台无关，只在一个平台构建一次
+          - os: windows-latest
+            suffix_glob: "win64"
+            extra: "false"
+          - os: macos-latest
+            suffix_glob: "macos-*"
+            extra: "false"
     steps:
       - uses: actions/checkout@v4
 
@@ -93,6 +111,7 @@ jobs:
 
       - name: Enable UTF-8
         run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
+        shell: bash
 
       - name: Install dependencies
         run: |
@@ -100,39 +119,117 @@ jobs:
           pip install -e ".[dev]"
           pip install build pyinstaller
 
-      - name: Build sdist
-        run: python -m build --sdist
+      - name: Build sdist + wheel (platform-independent)
+        if: matrix.extra == 'true'
+        run: python -m build --sdist --wheel
 
-      - name: Build wheel
-        run: python -m build --wheel
-
-      - name: Build CLI exe
+      - name: Build CLI exe (PyInstaller, native)
         run: pyinstaller --noconfirm tools/hws-formal-math.spec
 
-      - name: Verify frozen exe (selftest + bench)
+      # **原生冒烟**：在该平台真实运行冻结产物——这是 Linux/macOS 产物的唯一本体证据
+      # （Windows 开发机跑不了 ELF/Mach-O，本机等效校验在这两个平台上不可得）
+      - name: Smoke test frozen exe (native)
+        shell: bash
         run: |
-          ./dist/hws-formal-math/hws-formal-math selftest
-          ./dist/hws-formal-math/hws-formal-math bench --suite retrieval
-          ./dist/hws-formal-math/hws-formal-math bench --suite depgraph
+          EXE="dist/hws-formal-math/hws-formal-math"
+          if [ -f "${EXE}.exe" ]; then EXE="${EXE}.exe"; fi
+          test -x "$EXE" || { echo "冻结产物不可执行: $EXE"; ls -la dist/hws-formal-math/ | head; exit 1; }
+          echo "运行原生产物: $EXE"
+          "$EXE" selftest
+          "$EXE" bench --suite retrieval
+          "$EXE" bench --suite depgraph
+          "$EXE" search "加法结合律"
 
-      - name: Package release artifacts (确定性打包自测)
+      - name: Package release artifacts (确定性打包)
+        shell: bash
         run: |
-          python tools/package_release.py --dist dist --output release --tag v0.0.0-ci
+          if [ "${{ matrix.extra }}" = "true" ]; then
+            python tools/package_release.py --dist dist --output release \
+              --tag "${GITHUB_REF_NAME}" --with-python-dist
+          else
+            python tools/package_release.py --dist dist --output release \
+              --tag "${GITHUB_REF_NAME}"
+          fi
           ls -la release/
+
+      # 断言平台大类正确（防"在 mac 上打出 win64 名"这类错标）
+      - name: Assert platform label
+        shell: bash
+        run: |
+          GLOB="${{ matrix.suffix_glob }}"
+          COUNT=$(ls release/*.zip 2>/dev/null | wc -l)
+          test "$COUNT" -ge 1 || { echo "未产出 zip"; ls -la release/; exit 1; }
+          if ! ls release/*.zip | grep -qE "-(linux-|win|macos-)"; then
+            echo "zip 名缺平台后缀"; ls release/; exit 1
+          fi
+          echo "平台标签检查：期望含 ${GLOB}"
 
       # 打包确定性自测：两次独立打包必须逐字节一致
       - name: Assert packaging determinism
+        shell: bash
         run: |
-          python tools/package_release.py --dist dist --output release2 --tag v0.0.0-ci
+          python tools/package_release.py --dist dist --output release2 --tag "${GITHUB_REF_NAME}"
           sha256sum release/*.zip release2/*.zip
-          test "$(sha256sum release/*.zip | cut -d' ' -f1)" = "$(sha256sum release2/*.zip | cut -d' ' -f1)"
+          A=$(sha256sum release/*.zip | cut -d' ' -f1)
+          B=$(sha256sum release2/*.zip | cut -d' ' -f1)
+          test "$A" = "$B"
           echo "OK: 打包确定性通过（两次独立打包逐字节一致）"
 
-      - name: Upload artifacts
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: |
-            dist/*.tar.gz
-            dist/*.whl
-            dist/hws-formal-math
+          name: release-assets-${{ matrix.os }}
+          path: release/*
+          if-no-files-found: error
+
+  publish:
+    # 只在 tag 推送时发布（标准做法，不与 release 事件形成重跑循环）
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write    # 创建 Release 需要
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: release/
+
+      - name: List collected assets
+        run: ls -la release/
+
+      - name: Assert all three platforms present
+        run: |
+          echo "=== 附件清单 ==="
+          ls release/
+          test -n "$(ls release/*linux-*.zip 2>/dev/null)" || { echo "缺 Linux 产物"; exit 1; }
+          test -n "$(ls release/*win64*.zip 2>/dev/null)" || { echo "缺 Windows 产物"; exit 1; }
+          test -n "$(ls release/*macos-*.zip 2>/dev/null)" || { echo "缺 macOS 产物"; exit 1; }
+          test -n "$(ls release/*.tar.gz 2>/dev/null)" || { echo "缺 sdist"; exit 1; }
+          test -n "$(ls release/*.whl 2>/dev/null)" || { echo "缺 wheel"; exit 1; }
+          echo "OK: 三平台产物 + sdist/wheel 齐备"
+
+      - name: Merge checksums
+        run: |
+          cd release
+          cat SHA256SUMS-*.txt > SHA256SUMS.txt
+          rm -f SHA256SUMS-*.txt manifest-*.json
+          cat SHA256SUMS.txt
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          # 幂等：已存在则先删（零消费者窗口内的附件修订路径）；保留 tag 本身
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" release/* \
+            --title "Release ${TAG}" \
+            --notes-file RELEASE-NOTES.md \
+            --verify-tag
+          echo "=== 发布后核验（资产就位才算发完）==="
+          gh release view "$TAG" --json isDraft,assets --jq '{draft: .isDraft, assets: [.assets[] | {name, size, digest}]}'

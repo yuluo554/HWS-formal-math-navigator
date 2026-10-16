@@ -19,27 +19,45 @@ LLM 聊数学会"看起来对"，Lean 内核只认真假。本工具把**长上�
 
 ## 下载即用
 
-从 [Release v0.1.0](https://github.com/yuluo554/HWS-formal-math-navigator/releases/tag/v0.1.0) 下载 `hws-formal-math.exe`（Windows，免安装）。
+从 [Release](https://github.com/yuluo554/HWS-formal-math-navigator/releases) 下载对应平台的免安装包：
+
+| 平台 | 附件 | 说明 |
+|------|------|------|
+| **Windows x64** | `hws-formal-math-<tag>-win64.zip` | 解压后运行 `hws-formal-math.exe` |
+| **Linux x86_64** | `hws-formal-math-<tag>-linux-x86_64.zip` | 解压后运行 `./hws-formal-math`（zip 已保留可执行位） |
+| **macOS** | `hws-formal-math-<tag>-macos-*.zip` | 解压后运行 `./hws-formal-math`；首次运行可能需在「隐私与安全性」放行 |
+| 源码安装 | `*.tar.gz` / `*.whl` | `pip install`（Python 3.8+） |
 
 ```bash
-# 校验下载件（PowerShell / cmd）
-certutil -hashfile hws-formal-math.exe SHA256
-# 期望：31bb6c7daf695a03009a778e106282aa83de65ee33b43740489e793ca9defa5b
+# 校验下载件（Linux/macOS）
+sha256sum hws-formal-math-<tag>-linux-x86_64.zip
+# Windows
+certutil -hashfile hws-formal-math-<tag>-win64.zip SHA256
 
-# 自检（索引数据随 exe 分发，无需额外下载）
-hws-formal-math.exe selftest
+# 自检（索引数据随包分发，无需额外下载）
+./hws-formal-math selftest
 
 # 检索（离线可用）
-hws-formal-math.exe search "加法结合律"
+./hws-formal-math search "加法结合律"
 ```
 
-> **注意**：exe 为 **onedir** 形态（`hws-formal-math.exe` 与 `_internal/` 需同目录）；单独拷贝 exe 会因缺数据目录而自检失败。
+> **注意**：产物为 **onedir** 形态（可执行文件与 `_internal/` 目录需同目录，数据在 `_internal/data/`）；
+> 单独拷贝可执行文件会因缺数据目录而自检失败。
+
+### 已知环境问题
+
+| 问题 | 说明 |
+|------|------|
+| onedir 需整包 | 只拷可执行文件不行；必须连同 `_internal/` 一起解压使用 |
+| macOS 首次运行被拦 | 未签名二进制，需在「系统设置 → 隐私与安全性」手动放行 |
+| 无 Lean 时内核验证不可用 | 未安装 Lean 工具链时检索与依赖图**降级可用**，内核验证如实标注"未执行"；`bench --suite skeleton` 报告 `not_enabled`（不冒充通过） |
+| Windows 中文控制台 | 已内置 UTF-8 守卫（按 `stream.encoding` 探针 reconfigure），无需手动 `chcp` |
 
 ## 前置条件
 
 ### 必需
 
-- **Python 3.8+**（源码安装时）
+- **Python 3.8+**（源码安装时；免安装包不需要）
 
 ### 可选（功能分级）
 

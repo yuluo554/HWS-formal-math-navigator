@@ -20,6 +20,7 @@ import argparse
 import hashlib
 import json
 import platform
+import shutil
 import sys
 import zipfile
 from pathlib import Path
@@ -137,10 +138,16 @@ def main() -> int:
         print(f"警告：未找到冻结产物目录 {exe_dir}，跳过 zip 打包")
 
     # sdist / wheel（平台无关，加 --with-python-dist 才收）
+    # 注意：必须**拷进 output 目录**——只把 dist 里的路径记进 manifest 是不够的，
+    # 上传/发布收集的是 output 目录（实测：漏拷会让 manifest 有它、产物目录没有它，
+    # 下游"三平台 + sdist/wheel 齐备"断言必红）
     if args.with_python_dist:
         for pattern in ("*.tar.gz", "*.whl"):
             for path in sorted(args.dist.glob(pattern)):
-                artifacts.append(path)
+                target = args.output / path.name
+                if target.resolve() != path.resolve():
+                    shutil.copy2(path, target)
+                artifacts.append(target)
 
     if not artifacts:
         print("错误：没有任何可打包产物")

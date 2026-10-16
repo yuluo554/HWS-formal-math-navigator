@@ -326,6 +326,61 @@ class TestReleasePackagingGate:
         with pytest.raises(SystemExit):
             module.build_zip(empty, tmp_path / "x.zip", "root")
 
+    def test_python_dist_copied_into_output_dir(self, tmp_path, monkeypatch):
+        """--with-python-dist 必须把 sdist/wheel **拷进** output 目录
+
+        实测缺陷：只把 dist 里的路径记进 manifest、没拷进 output 目录 →
+        manifest 里有它、产物目录没有它 → 下游"齐备"断言必红
+        （上传/发布收集的是 output 目录，不是 dist）。
+        """
+        module = self._pkg()
+
+        dist = tmp_path / "dist"
+        exe_dir = dist / "hws-formal-math"
+        exe_dir.mkdir(parents=True)
+        (exe_dir / "hws-formal-math").write_bytes(b"bin")
+        (dist / "pkg-1.0.tar.gz").write_bytes(b"sdist")
+        (dist / "pkg-1.0-py3-none-any.whl").write_bytes(b"wheel")
+
+        out = tmp_path / "release"
+        # 脚本按 `python tools/package_release.py` 调用（脚本目录在 sys.path[0]），
+        # 故测试须同样把 tools/ 放进 sys.path —— 否则脚本顶部的 `from _encoding import ...` 会失败
+        monkeypatch.syspath_prepend(str(TOOLS_DIR))
+        monkeypatch.setattr(sys, "argv", [
+            "package_release.py",
+            "--dist", str(dist), "--output", str(out),
+            "--tag", "v9.9.9", "--with-python-dist", "--suffix", "test-suffix",
+        ])
+        module.main()
+
+        assert (out / "pkg-1.0.tar.gz").is_file(), "sdist 未拷进 output"
+        assert (out / "pkg-1.0-py3-none-any.whl").is_file(), "wheel 未拷进 output"
+        assert (out / "hws-formal-math-v9.9.9-test-suffix.zip").is_file(), "zip 未产出"
+
+
+class TestReleaseAssetCompleteness:
+    """发布附件齐备性守门"""
+
+    def test_publish_asserts_all_platforms(self):
+        """publish job 必须断言三平台 + sdist/wheel 齐备后才发布"""
+        ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        head, sep, _ = ci.partition("Publish release")
+        assert sep, "未找到发布步骤"
+        for token in ("linux-", "win64", "macos-", ".tar.gz", ".whl"):
+            assert token in head, f"发布前未断言附件齐备: {token}"
+
+    def test_grep_pattern_not_starting_with_dash(self):
+        """workflow 里的 grep 模式不得以 `-` 开头（会被当选项 → invalid option）
+
+        实测缺陷：`grep -qE "-(linux-|win|macos-)"` 报 `grep: invalid option -- '('`。
+        正解 = 显式 `grep -e <pattern>`（模式与选项分离）。
+        """
+        import re
+        ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        # 找形如 grep [-flag...] "-..." 的裸模式
+        bad = re.findall(r'grep\s+(-[A-Za-z]+\s+)+"-(?![eE]\b)', ci)
+        assert not bad, f"grep 模式以 - 开头会被当选项: {bad}"
+
 
 class TestCrossPlatformReleaseGate:
     """跨平台发布链守门"""

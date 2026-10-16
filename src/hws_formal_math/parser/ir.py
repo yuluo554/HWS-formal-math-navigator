@@ -109,14 +109,17 @@ class ParseResult:
     parse_time_ms: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
+        """转换为字典（用于 JSON 序列化）
+
+        注意：parse_time_ms 被排除，因为解析时间不是确定性内容。
+        这是 K4（同输入同结果）口径的要求。
+        """
         return {
             "module": self.module,
             "source_file": self.source_file,
             "dependencies": sorted(self.dependencies),
             "declaration_count": len(self.declarations),
             "declarations": [d.to_dict() for d in self.declarations],
-            "parse_time_ms": self.parse_time_ms
         }
 
     def __eq__(self, other: object) -> bool:

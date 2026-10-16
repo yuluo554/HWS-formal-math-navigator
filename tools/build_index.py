@@ -158,9 +158,14 @@ def _lean_file_to_module(lean_file: Path, mathlib4_path: Path) -> str:
     例如：Mathlib/Algebra/Group/Defs.lean -> Mathlib.Algebra.Group.Defs
     """
     # 获取相对于 mathlib4_path 的路径
-    if lean_file.is_relative_to(mathlib4_path / "src"):
-        rel_path = lean_file.relative_to(mathlib4_path / "src")
-    elif lean_file.is_relative_to(mathlib4_path):
+    # 注意：使用 str 比较而非 is_relative_to（Python 3.8 兼容）
+    src_path = mathlib4_path / "src"
+    src_str = str(src_path.resolve())
+    lean_str = str(lean_file.resolve())
+    
+    if lean_str.startswith(src_str):
+        rel_path = lean_file.relative_to(src_path)
+    elif lean_str.startswith(str(mathlib4_path.resolve())):
         rel_path = lean_file.relative_to(mathlib4_path)
     else:
         rel_path = lean_file

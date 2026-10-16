@@ -106,9 +106,9 @@ jobs:
 
       - name: Verify frozen exe (selftest + bench)
         run: |
-          dist/hws-formal-math selftest
-          dist/hws-formal-math bench --suite retrieval
-          dist/hws-formal-math bench --suite depgraph
+          ./dist/hws-formal-math/hws-formal-math selftest
+          ./dist/hws-formal-math/hws-formal-math bench --suite retrieval
+          ./dist/hws-formal-math/hws-formal-math bench --suite depgraph
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

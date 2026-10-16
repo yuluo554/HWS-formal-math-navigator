@@ -37,20 +37,37 @@ M5 声称"发布与交付完成"，但**发布物本体从未被验证过**。M6
 
 ## 三、构建产物清单（M6 重建，最终基线）
 
-**基线**：`git rev-parse HEAD`（本文件所在提交的父提交为产物构建基线；`git diff <基线>..HEAD -- src/ tools/hws-formal-math.spec` 为空表示产物与源码同基线）。
+**基线**：本文件所在提交（tag `v0.1.0` 指向它；权威值用 `git rev-list -n1 v0.1.0` 现取）。
+产物由 **CI 三平台原生构建**（PyInstaller 不能交叉编译），哈希为**本次上传件的实测值**
+（`gh api .../releases/tags/v0.1.0` 回读 digest，与下载件逐位一致）。
 
-| 产物 | 说明 | 大小 | SHA256 |
+### 3.1 三平台冻结产物（CI 原生构建 + 原生冒烟）
+
+| 附件 | 平台/架构 | 大小 | SHA256 |
+|------|-----------|------|--------|
+| `hws-formal-math-v0.1.0-linux-x86_64.zip` | Linux x86_64（ELF） | 52,478,497 | `95aa84ec98e1929baa6bf8ae4fad992a2cdb5562388ad7f72a8681c6c5b4906b` |
+| `hws-formal-math-v0.1.0-macos-arm64.zip` | macOS arm64（Mach-O） | 36,485,779 | `7739fa893d8b9e1498249a7bb8500a4646db9e194b0945d8991accc8d0fb117c` |
+| `hws-formal-math-v0.1.0-win64.zip` | Windows x64（PE） | 19,928,844 | `c085ea1174bb300fbc7a86094c4ea5011d2f587e9cd94ca0e36f840be0f1578f` |
+
+### 3.2 平台无关产物
+
+| 附件 | 说明 | 大小 | SHA256 |
 |------|------|------|--------|
-| `hws-formal-math-v0.1.0-win64.zip` | CLI 冻结产物（onedir，含 `_internal/` 数据） | 17,604,753 | `42ad6af586fb10164140d25d40a353ceeab2192a785887641f031ab0fa7be1e2` |
-| `hws_formal_math_navigator-0.1.0.tar.gz` | 源码包 | 58,664 | `3f24a4540fdc0483606cadaaddf3975037475d115b72439754bf6c69d8f1fc1a` |
-| `hws_formal_math_navigator-0.1.0-py3-none-any.whl` | wheel | 43,124 | `a75c3a104aa79000df5b4169596e413514db0f75c88848218255b9633c199aa1` |
+| `hws_formal_math_navigator-0.1.0.tar.gz` | 源码包 | 61,720 | `f9598889006f1183c4514e530fe9f29abd749b9120aa57156c312de5243c2df4` |
+| `hws_formal_math_navigator-0.1.0-py3-none-any.whl` | wheel | 43,505 | `ec9671259d5207d81d5204fa8c8693d97d3c6d3aa8f92a53c01d8a383d17d20f` |
+| `SHA256SUMS.txt` | 附件校验和（三平台合并） | 530 | `bdbf62e7e70e6b6ca3414de7b61a00a666765b854c4eb0a727c7da2e7041e2b2` |
 
-**打包确定性**：`tools/package_release.py` 用 `ZIP_STORED` + 条目显式 sort + 全条目固定 `date_time`
-→ 两次独立打包**逐个字节一致**（实测两轮 sha256 均为 `42ad6af5…`）。可复跑的是**打包这一步**；
-exe 构建本身（PyInstaller）不承诺跨机字节一致。
+> 上表 sha256 由 `gh api` / `sha256sum` **输出直接采录**，非手抄。空行不留（防 `sha256sum -c` 告警刷屏）。
 
-> **M5 附件已作废**：v0.1.0 原附件（`31bb6c7d…` exe / `fdd7558a…` tar.gz / `85d51157…` whl）
-> 因 D1/D2 缺陷不可用，其 sha256 保留于此仅作历史对账，**不作为发布基线**。
+### 3.3 打包纪律
+
+- **可复跑的是打包这一步**：`ZIP_STORED` + 条目显式 sort + 固定 `date_time` → 同 dist 树两次独立打包**逐字节一致**（CI 每平台断言）。
+- **不承诺的是 exe 构建**：PyInstaller 产物含构建期信息，不跨机字节一致 → 台账记"本次上传件哈希"。
+- **保留可执行位**：按源树实算 + 无扩展名主程序/`.so`/`.dylib` 兜底 → 实测 linux/macos 主程序 `0o755`、共享库带 exec 位（写死 `0o644` 会让 Unix 产物解压后不可执行）。
+- **平台后缀实算**：`sys.platform` + `platform.machine()`；`arm64` 与 `x86_64` 如实区分。
+
+> **历史附件已作废**：M5 单文件 exe（`31bb6c7d…`）因数据未入包不可用；M6 首轮单平台重建版（`42ad6af5…`，仅 win64）
+> 已被本次三平台版取代。旧 sha256 保留于此仅作历史对账，**不作为发布基线**。
 
 ## 四、发布物本体验证（真下载，非本机 dist）
 
@@ -59,14 +76,19 @@ exe 构建本身（PyInstaller）不承诺跨机字节一致。
 gh release download v0.1.0 --dir <tmp> --clobber
 # ② 下载件 sha256 与留档逐位比对
 sha256sum <下载件>
-# ③ 中立目录解压后跑冻结态自检
+# ③ 中立目录解压后跑冻结态自检（在**对应平台**上跑）
 <解压目录>/hws-formal-math selftest
 ```
 
 | 检查项 | 结果 |
 |--------|------|
-| 下载件 sha256 与留档一致 | ✅ M6 重建附件（`42ad6af5…` 逐位一致，含**匿名**裸 https 下载复验） |
-| 中立目录 selftest | ❌ **M5 附件失败**（D1）→ ✅ M6 重建附件通过 |
+| 下载件 sha256 与留档一致 | ✅ 三平台 + sdist/wheel 全部逐位一致（含**匿名**裸 https 下载复验 linux 件） |
+| 中立目录 selftest（Windows） | ❌ M5 附件失败（D1）→ ✅ 本次 Windows 件原生通过 |
+| 中立目录 selftest（Linux） | ✅ **CI 原生 runner 上实测通过**（`索引条目数: 35`） |
+| 中立目录 selftest（macOS） | ✅ **CI 原生 runner 上实测通过**（`索引条目数: 35`） |
+| 包结构核验 | ✅ linux=ELF 头、macos=Mach-O 头（`cffaedfe`=arm64）、三平台均含 `_internal/data/` |
+| 可执行位 | ✅ linux/macos 主程序 `0o755`，共享库带 exec 位 |
+
 | 中立目录 search / bench | ❌ **M5 附件失败**（D2）→ ✅ M6 重建附件通过 |
 | 冻结态数据随包断言 | ✅（`✅ 冻结态数据目录随包`） |
 
@@ -93,30 +115,43 @@ sha256sum <下载件>
 | 3c6ae35 | push | ✅ success | release job 修复（确定性打包器） |
 | 3c6ae35 | release | ❌ failure | **旧 workflow 修订**的陈旧 run（当时 `release: published` 触发仍在） |
 | 24f963b | push | ✅ success | **移除自动发 Release** + build job 内打包确定性自测 |
+| 0c0f359 | push | ✅ success | 发布留档终稿 |
+| fae54cf | push | ❌ failure | **三平台构建全过**（Linux/macOS 二进制均跑通），仅平台标签断言步骤误红 |
+| 634dbb3 | push | ✅ success | 修 grep 模式以 `-` 开头被当选项 |
+| 634dbb3 | push(tag) | ❌ failure | **7 个 test/build job 全绿**，publish 因"缺 sdist"红一轮 |
+| b9ac9ff | push | ✅ success | 修打包器漏拷 sdist/wheel 到 output 目录 |
+| b9ac9ff | push(tag) | ✅ success | **test 四矩阵 + 三平台 build + publish 全绿**；Release 三平台附件就位 |
 
-**首跑诊断如实记录**（两轮，均为环境差异型，非业务逻辑缺陷）：
-1. `4fa63b3`：onedir 布局下 `dist/hws-formal-math` 是**目录**，exe 在子目录内 → CI 路径断言写错。
+**首跑诊断如实记录**（四轮，全部为环境差异/工具链类型，无业务逻辑缺陷）：
+1. `4fa63b3`：onedir 布局下 `dist/hws-formal-math` 是**目录**，exe 在子目录 → CI 路径断言写错。
 2. `2b76120`(release)：同因，release job 对目录跑 `sha256sum`。
+3. `fae54cf`：`grep -qE "-(linux-|win|macos-)"` 的模式首字符是 `-` → 被 grep 当选项
+   （`invalid option -- '('`）。**注意：该轮三平台原生构建与冒烟实际已全过**（Linux/macOS 二进制
+   各自跑通 `selftest`/`bench`），红的是断言本身。
+4. `634dbb3`(tag)：`--with-python-dist` 只把 dist 里的路径记进 manifest、**没拷进 output 目录**
+   → manifest 有它、产物目录没有它 → publish 的"齐备"断言必红。
 
-**发布模型定夺（重要）**：移除 `release: published` 触发与自动发 Release job，原因两条：
-① **PyInstaller 产物不承诺跨机字节一致**——CI 构建的 exe 哈希必与本地台账不同，自动上传会让
-"附件哈希可对账"这一承诺失效；② 该触发与发版动作形成**重跑循环**。
-故最终形态 = **CI 只验证**（四矩阵测试 + exe 能构建能运行 + 打包确定性自测），
-**发布附件走本地确定性构建 + 手工上传 + sha256 入台账**。
-`3c6ae35` 的那次 release 失败 run 属**被移除的旧触发**留下的陈旧记录，
-其 head_sha 指向的 workflow 修订已不含该 job——如实登记，不删 run（历史留痕面）。
+**发布模型（最终定夺）**：附件由 **CI 在 tag 推送时三平台原生构建**（PyInstaller **不能交叉编译**）
+→ `publish` job 合成 Release（`--verify-tag`），发布前断言三平台 + sdist/wheel 齐备。
+PyInstaller 产物**不承诺跨机字节一致**，故台账记"本次上传件的哈希"（`gh api .../releases` 回读，
+与下载件逐位一致）；**可复跑的是打包这一步**（每平台 CI 断言双打逐字节一致）。
+
+> **早期形态说明**：首版曾"移除自动发 Release + 本地手工上传"（当时只有 Windows 单平台）。
+> 扩展三平台后必须回到 CI 构建——因为 Linux/macOS 产物**只能**在对应 runner 上生成与验证。
+> `3c6ae35` 的那次 release 失败 run 属**被移除的旧触发**留下的陈旧记录，如实登记，不删 run。
 
 ## 六、收尾固化任务
 
 | 项 | 状态 | 证据 |
 |----|------|------|
-| CI 首跑全绿（四矩阵） | ✅ | run 38853699358 / 38855312502 / 38855814967：ubuntu+windows × 3.8/3.12 全 success |
-| README 状态行转正 | ✅ | CI 徽章 + "✅ v0.1.0 已发布" + 下载即用节 + CI 矩阵说明 |
-| 缓议项清零 | ✅ | `plan/DEFERRED-ITEMS.md`（14 项 + §六 12 项复核发现） |
-| 发布后元信息终检 | ✅ | topics 已设并回读；assets/digest 见 §三/§四 |
-| 发布物本体已验 | ✅ | §四（**匿名**真下载 → sha256 一致 → 中立目录 selftest/search/bench 通过） |
-| 发布附件修订 | ✅ | §九（tag 迁移 + 附件替换 + Release 转正） |
-| 测试计数（当轮实测） | ✅ | 185 passed（3.8 与 3.12 双解释器实测） |
+| CI 全绿（四矩阵测试 + 三平台构建） | ✅ | run 38859753740：7 个 job 全 success |
+| README 状态行转正 | ✅ | CI 徽章 + 三平台下载表 + 已知环境问题节 |
+| 缓议项清零 | ✅ | `plan/DEFERRED-ITEMS.md`（14 项；D8 跨平台已结案 §7.1） |
+| 发布后元信息终检 | ✅ | topics 已设并回读；三平台 assets/digest 见 §三 |
+| 发布物本体已验 | ✅ | §四（三平台 sha256 逐位一致；Windows 原生跑通；Linux/macOS 在 CI 原生 runner 跑通） |
+| **跨平台 exe（D8）** | ✅ | §三 三平台附件；平台后缀实算 + 可执行位保留 |
+| 测试计数（当轮实测） | ✅ | 198 passed（3.8 与 3.12 双解释器实测） |
+
 
 ## 七、诚实口径与已知偏差
 
@@ -167,5 +202,5 @@ HEAD 已修（spec 现用 `SPECPATH` 相对推导），但**历史 blob 中仍�
 
 ---
 
-> **本文件状态**：✅ v4 定稿（2026-10-16，含发布修订执行记录、CI 对账、历史残留定夺）
-> **项目状态**：M1–M6 全部里程碑达成；发布物本体已验；CI 四矩阵全绿
+> **本文件状态**：✅ v5 定稿（2026-10-16，含三平台发布、CI 对账、历史残留定夺）
+> **项目状态**：M1–M6 全部里程碑达成；三平台发布物本体已验；CI 全绿（四矩阵测试 + 三平台构建）

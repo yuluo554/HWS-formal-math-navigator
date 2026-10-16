@@ -54,16 +54,35 @@
 | ⏳ 延期 | 4 | D8, D11, D12, D13 |
 | **总计** | **14** | |
 
-## 六、延期项后续行动
+## 六、M6 收尾期新增缺陷（复核发现，已全部修复）
 
-| 编号 | 延期项 | 后续行动 | 负责人 |
-|------|--------|----------|--------|
+> 这些不是"缓议项"，而是 **M5 声称完成却实际未达成**的项——M6 发布物本体复核后暴露。
+> 按 skill"如实登记"纪律，单列成表（不回填 M5 的 ✅）。
+
+| 编号 | 缺陷 | 原声称 | 实测 | 修复 |
+|------|------|--------|------|------|
+| X1 | 发布 exe 跑不通 | M5"exe 构建成功，selftest/search 正常" | 真下载附件 `selftest` → `索引目录不存在` | 冻结态数据目录解析 + spec datas 收数据 |
+| X2 | `bench` 是 pytest 包装桩 | M4"CLI 入口实现" | `--suite` 不生效、cwd 错、无基准指标 | 实现 `benchmark` 模块 |
+| X3 | `test_bench_probe.py` 空桩 | plan/03 承诺"探活" | 3 个 `pass`（假门） | 11 项双向对照探活 + 变异验证 |
+| X4 | depgraph 违反 K2 | M3"index_gap 语义" | 已覆盖模块被判 index_gap（`_is_module_covered` 死循环） | 模块覆盖集判定 |
+| X5 | 循环导入 | — | `import ...engine.retriever` 崩溃 | PEP 562 惰性属性 |
+| X6 | spec 硬编码本机路径 | M5"脱敏扫描通过" | `pathex=['D:\\ProgramData\\…']` | `SPECPATH` 相对推导 |
+| X7 | 快照生成器是桩 | M1"预置快照完成" | `manifest.json` 为 `sha256: "placeholder"` | 实现生成器 + `--check` |
+| X8 | 无 LICENSE | 声明 MIT | 仓内无文件 | 补 LICENSE |
+| X9 | tools 无编码守卫 | — | CI windows 必红 | `tools/_encoding.py` + 各入口 |
+| X10 | 退出码违约 | plan/04 §2.2 契约=3 | 实现返回 1 | 对齐契约 |
+| X11 | fixtures 真值不存在 | — | `Nat.pow_le_self` 等不在索引中 | 改为真实定理名 |
+| X12 | README 命令返回空 | README 快速开始 | `search "加法结合律"` exit 1 | 确定性别名表 |
+
+## 七、延期项后续行动
+
+| 编号 | 延期项 | 后续行动 | 状态 |
+|------|--------|----------|------|
 | D8 | 跨平台 exe | 扩展项：Linux/macOS 打包 | 待定 |
-| D11 | CI 首跑全绿 | 网络恢复后推送 a4abb5e，触发 CI | 待定 |
-| D12 | Windows CI 矩阵 | 扩展项：添加 windows-latest 矩阵 | 待定 |
-| D13 | GitHub topics | 网络恢复后 gh api 设置 topics | 待定 |
+| D11 | CI 首跑全绿 | ✅ 已完成（run 38853699358 四矩阵全绿） | 结案 |
+| D12 | Windows CI 矩阵 | ✅ 已完成（`matrix.os: [ubuntu-latest, windows-latest]`） | 结案 |
+| D13 | GitHub topics | M6 补齐并回读核验 | 进行中 |
 
 ---
 
-> **本表状态**：✅ v1 定稿（2026-10-16）
-> **下一步**：网络恢复后推送 CI 修复提交，触发首跑验证
+> **本表状态**：✅ v2 定稿（2026-10-16，M6 收尾期真实缺陷复核后补充 §六）

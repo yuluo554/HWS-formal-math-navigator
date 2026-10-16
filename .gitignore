@@ -42,6 +42,8 @@ tmp/
 out/
 .pytest_cache/
 _backups/
+release/
+release2/
 
 # PyInstaller 构建产物与 spec 例外（spec 入仓时加 !tools/*.spec）
 *.spec

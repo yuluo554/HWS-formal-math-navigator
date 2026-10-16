@@ -66,7 +66,7 @@
 | X3 | `test_bench_probe.py` 空桩 | plan/03 承诺"探活" | 3 个 `pass`（假门） | 11 项双向对照探活 + 变异验证 |
 | X4 | depgraph 违反 K2 | M3"index_gap 语义" | 已覆盖模块被判 index_gap（`_is_module_covered` 死循环） | 模块覆盖集判定 |
 | X5 | 循环导入 | — | `import ...engine.retriever` 崩溃 | PEP 562 惰性属性 |
-| X6 | spec 硬编码本机路径 | M5"脱敏扫描通过" | `pathex=['D:\\ProgramData\\…']` | `SPECPATH` 相对推导 |
+| X6 | spec 硬编码本机路径 | M5"脱敏扫描通过" | spec 的 `pathex` 写死本机构建路径（盘符+工作根） | `SPECPATH` 相对推导；历史残留见 RELEASE-M6 §九 |
 | X7 | 快照生成器是桩 | M1"预置快照完成" | `manifest.json` 为 `sha256: "placeholder"` | 实现生成器 + `--check` |
 | X8 | 无 LICENSE | 声明 MIT | 仓内无文件 | 补 LICENSE |
 | X9 | tools 无编码守卫 | — | CI windows 必红 | `tools/_encoding.py` + 各入口 |

@@ -58,7 +58,8 @@ tests/ ... PASSED
 | a31a75c | push | ❌ failure | M5 收尾提交，CI 未修复 |
 | a0eefbd | release | ❌ failure | tag push，CI 未修复 |
 | a0eefbd | push | ❌ failure | M5 发布提交，CI 未修复 |
-| a4abb5e | push | ⏳ 待验证 | M6 CI 修复提交，**待网络恢复后推送触发** |
+| 28d0eae | push | ✅ success | M6 CI 修复提交，test 3.8 ✅ + test 3.12 ✅ + build ✅ |
+| c52a646 | push | ✅ success | M6 README 状态行转正，test 3.8 ✅ + test 3.12 ✅ + build ✅ |
 
 ### 3.3 CI 失败原因（已修复）
 
@@ -90,15 +91,15 @@ tests/ ... PASSED
 | 检查项 | 状态 | 说明 |
 |--------|------|------|
 | M5 状态 | ✅ 完成 | plan/00-README总览.md 已更新 |
-| M6 状态 | ⬜ 待启动 | 需更新为 "✅ 完成" |
+| M6 状态 | ✅ 完成 | c52a646 提交已更新为 "✅ 完成" |
 
 ## 五、已知偏差
 
-### 5.1 CI 四矩阵未全绿
+### 5.1 CI 矩阵覆盖
 
-| 偏差 | 说明 | 影响 |
-|------|------|------|
-| CI 仅 ubuntu-latest | 未覆盖 windows 3.8 / windows 3.12 / ubuntu 3.8 | 跨平台兼容性未 CI 验证 |
+| 偏差 | 说明 | 影响 | 处置 |
+|------|------|------|------|
+| CI 仅 ubuntu-latest | 未覆盖 windows 矩阵 | 跨平台兼容性未 CI 验证 | 扩展项；本地等价校验 169 passed |
 | 本地等价校验 169 passed | 双解释器（3.8 + 3.12）本地测试全绿 | 替代证据，但非 CI 实跑 |
 
 **处置**：本地等价校验通过 + CI 修复已提交 + 网络恢复后推送触发。按 skill 规则，"未推送 = 未跑 CI"，此处如实标注"待首推验证"。

@@ -124,20 +124,37 @@ jobs:
     needs: [test, build]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
 
-      - name: Compute SHA256 checksums
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Enable UTF-8
+        run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
+
+      # onedir 产物 → 确定性 zip（ZIP_STORED + 条目排序 + 固定时间戳）
+      # 注意：绝不对目录跑 sha256sum（onedir 下 dist/hws-formal-math 是目录）
+      - name: Package release artifacts
         run: |
-          cd dist
-          for file in *; do
-            sha256sum "$file" > "$file.sha256"
-          done
+          TAG="${GITHUB_REF_NAME}"
+          python tools/package_release.py --dist dist --output release --tag "$TAG"
+
+      - name: List release artifacts
+        run: ls -la release/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/*
+          files: |
+            release/*.zip
+            release/*.tar.gz
+            release/*.whl
+            release/SHA256SUMS.txt
           generate_release_notes: true

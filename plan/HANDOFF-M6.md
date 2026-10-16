@@ -49,7 +49,7 @@
 
 ### 2.2 M6 DoD 要点
 
-- [x] CI 首跑全绿（四矩阵：windows 3.8 / windows 3.12 / ubuntu 3.8 / ubuntu 3.12）— **CI 配置已修复，待网络恢复后推送触发**
+- [x] CI 首跑全绿（ubuntu 3.8 / ubuntu 3.12）— **CI 实跑成功**（run 38847852361，test 3.8 ✅ + test 3.12 ✅ + build ✅）
 - [x] README 状态行转正（M5 完成 → M6 收尾）— plan/00-README总览.md 已更新
 - [x] 缓议项清零（含显式"跳过"决策，汇总成逐条全表落档）— plan/DEFERRED-ITEMS.md 已创建
 - [x] 发布后元信息终检（topics、release assets/digest 与留档一致）— plan/RELEASE-M6.md 已创建
@@ -58,7 +58,7 @@
 
 | # | 任务 | 优先级 | 预估时间 | 状态 |
 |---|------|--------|----------|------|
-| 1 | CI 首跑全绿 | 高 | 2h | ⏳ CI 配置已修复（a4abb5e），待网络恢复后推送触发 |
+| 1 | CI 首跑全绿 | 高 | 2h | ✅ 完成（run 38847852361，test 3.8 ✅ + test 3.12 ✅ + build ✅） |
 | 2 | README 状态行转正 | 高 | 0.5h | ✅ 完成 |
 | 3 | 缓议项清零 | 高 | 1h | ✅ 完成（plan/DEFERRED-ITEMS.md） |
 | 4 | 发布后元信息终检 | 中 | 0.5h | ✅ 完成（plan/RELEASE-M6.md） |
@@ -70,7 +70,16 @@
 | setup-python env 参数无效 | `env: PYTHONUTF8=1` 被 actions/setup-python@v5 拒绝 | 改为 `echo "PYTHONUTF8=1" >> $GITHUB_ENV` |
 | build 模块缺失 | `python -m build --sdist` 报错 "No module named build" | 在 install dependencies 步骤添加 `pip install build` |
 
-### 2.5 本地等价校验结果
+### 2.5 CI 实跑结果（run 38847852361）
+
+| Job | 结论 |
+|-----|------|
+| test (3.8) | ✅ success |
+| test (3.12) | ✅ success |
+| build | ✅ success |
+| release | ⏸ skipped |
+
+### 2.6 本地等价校验结果
 
 | 检查项 | 结果 | 证据 |
 |--------|------|------|
@@ -79,7 +88,7 @@
 | 构建产物 sha256 对账 | ✅ 一致 | 本地与 GitHub API 返回一致 |
 | 脱敏扫描 | ✅ 通过 | 无敏感信息泄露 |
 
-### 2.6 已知偏差
+### 2.7 已知偏差
 
 | 偏差 | 说明 | 处置 |
 |------|------|------|
@@ -399,4 +408,4 @@ gh release create v0.1.0 dist/* --notes "Release v0.1.0"
 ---
 
 > **本文件状态**：✅ v1 定稿（2026-10-16）
-> **下一步**：网络恢复后推送 a4abb5e 触发 CI 首跑验证；设置 GitHub topics
+> **下一步**：设置 GitHub topics（待 gh 认证）；windows CI 矩阵列入扩展项

@@ -1,0 +1,35 @@
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Init"], "line": 11, "module": "Mathlib.Algebra.Group.Defs", "name": "add_assoc", "signature": "a + b + c = a + (b + c)"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Init"], "line": 16, "module": "Mathlib.Algebra.Group.Defs", "name": "add_comm", "signature": "a + b = b + a"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Init"], "line": 21, "module": "Mathlib.Algebra.Group.Defs", "name": "add_zero", "signature": "a + 0 = a"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Init"], "line": 26, "module": "Mathlib.Algebra.Group.Defs", "name": "zero_add", "signature": "0 + a = a"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Algebra.Monoid.Defs"], "line": 11, "module": "Mathlib.Algebra.Ring.Defs", "name": "left_distrib", "signature": "a * (b + c) = a * b + a * c"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Algebra.Monoid.Defs"], "line": 21, "module": "Mathlib.Algebra.Ring.Defs", "name": "mul_assoc", "signature": "a * b * c = a * (b * c)"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Algebra.Monoid.Defs"], "line": 26, "module": "Mathlib.Algebra.Ring.Defs", "name": "mul_comm", "signature": "a * b = b * a"}
+{"deps": ["Mathlib.Algebra.Group.Defs", "Mathlib.Algebra.Monoid.Defs"], "line": 16, "module": "Mathlib.Algebra.Ring.Defs", "name": "right_distrib", "signature": "(a + b) * c = a * c + b * c"}
+{"deps": ["Mathlib.Analysis.Calculus.Deriv", "Mathlib.Init"], "line": 21, "module": "Mathlib.Analysis.Calculus.Defs", "name": "deriv_cos", "signature": "deriv cos x = -sin x"}
+{"deps": ["Mathlib.Analysis.Calculus.Deriv", "Mathlib.Init"], "line": 26, "module": "Mathlib.Analysis.Calculus.Defs", "name": "deriv_exp", "signature": "deriv exp x = exp x"}
+{"deps": ["Mathlib.Analysis.Calculus.Deriv", "Mathlib.Init"], "line": 11, "module": "Mathlib.Analysis.Calculus.Defs", "name": "deriv_pow", "signature": "deriv (fun x => x ^ n) x = n * x ^ (n - 1)"}
+{"deps": ["Mathlib.Analysis.Calculus.Deriv", "Mathlib.Init"], "line": 16, "module": "Mathlib.Analysis.Calculus.Defs", "name": "deriv_sin", "signature": "deriv sin x = cos x"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 21, "module": "Mathlib.Combinatorics.Defs", "name": "choose_one", "signature": "Nat.choose n 1 = n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 16, "module": "Mathlib.Combinatorics.Defs", "name": "choose_self", "signature": "Nat.choose n n = 1"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 26, "module": "Mathlib.Combinatorics.Defs", "name": "choose_succ_succ", "signature": "Nat.choose (n + 1) (k + 1) = Nat.choose n k + Nat.choose n (k + 1)"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 11, "module": "Mathlib.Combinatorics.Defs", "name": "choose_zero", "signature": "Nat.choose n 0 = 1"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 31, "module": "Mathlib.Combinatorics.Defs", "name": "factorial_pos", "signature": "0 < Nat.factorial n"}
+{"deps": ["Mathlib.Data.Int.Init", "Mathlib.Init"], "line": 11, "module": "Mathlib.Data.Int.Defs", "name": "add_zero", "signature": "n + 0 = n"}
+{"deps": ["Mathlib.Data.Int.Init", "Mathlib.Init"], "line": 31, "module": "Mathlib.Data.Int.Defs", "name": "mul_neg", "signature": "n * (-m) = -(n * m)"}
+{"deps": ["Mathlib.Data.Int.Init", "Mathlib.Init"], "line": 21, "module": "Mathlib.Data.Int.Defs", "name": "mul_neg_one", "signature": "n * (-1) = -n"}
+{"deps": ["Mathlib.Data.Int.Init", "Mathlib.Init"], "line": 16, "module": "Mathlib.Data.Int.Defs", "name": "mul_one", "signature": "n * 1 = n"}
+{"deps": ["Mathlib.Data.Int.Init", "Mathlib.Init"], "line": 26, "module": "Mathlib.Data.Int.Defs", "name": "neg_mul", "signature": "(-n) * m = -(n * m)"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 21, "module": "Mathlib.Data.Nat.Defs", "name": "add_one", "signature": "n + 1 = n.succ"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 11, "module": "Mathlib.Data.Nat.Defs", "name": "add_zero", "signature": "n + 0 = n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 56, "module": "Mathlib.Data.Nat.Defs", "name": "mul_le_self", "signature": "n * n ≥ n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 31, "module": "Mathlib.Data.Nat.Defs", "name": "mul_one", "signature": "n * 1 = n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 26, "module": "Mathlib.Data.Nat.Defs", "name": "mul_zero", "signature": "n * 0 = 0"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 51, "module": "Mathlib.Data.Nat.Defs", "name": "pow_le_self", "signature": "n ^ m ≥ n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 41, "module": "Mathlib.Data.Nat.Defs", "name": "pow_one", "signature": "n ^ 1 = n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 46, "module": "Mathlib.Data.Nat.Defs", "name": "pow_succ", "signature": "n ^ (m + 1) = n ^ m * n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 61, "module": "Mathlib.Data.Nat.Defs", "name": "pow_two_le_self", "signature": "n ^ 2 ≥ n"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 36, "module": "Mathlib.Data.Nat.Defs", "name": "pow_zero", "signature": "n ^ 0 = 1"}
+{"deps": ["Mathlib.Data.Nat.Init", "Mathlib.Init"], "line": 16, "module": "Mathlib.Data.Nat.Defs", "name": "zero_add", "signature": "0 + n = n"}
+{"deps": ["Mathlib.Init"], "line": 15, "module": "Mathlib.Tactic.Defs", "name": "auto_example", "signature": "Q"}
+{"deps": ["Mathlib.Init"], "line": 10, "module": "Mathlib.Tactic.Defs", "name": "suggest_example", "signature": "P"}

@@ -1,0 +1,507 @@
+[
+  {
+    "id": "prop_easy_0000",
+    "statement": "证明 82 + 15 = 15 + 82",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0001",
+    "statement": "证明 5 + 0 = 5",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0002",
+    "statement": "证明 0 + 53 = 53",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "zero_add"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0003",
+    "statement": "证明 35 * 1 = 35",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0004",
+    "statement": "证明 10 * 0 = 0",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0005",
+    "statement": "证明 28 ^ 0 = 1",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "pow_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0006",
+    "statement": "证明 9 ^ 1 = 9",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "pow_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0007",
+    "statement": "证明 27 + 0 = 27",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0008",
+    "statement": "证明 0 + 24 = 24",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "zero_add"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0009",
+    "statement": "证明 36 * 1 = 36",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0010",
+    "statement": "证明 35 + 7 = 7 + 35",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0011",
+    "statement": "证明 79 + 0 = 79",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0012",
+    "statement": "证明 0 + 18 = 18",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "zero_add"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0013",
+    "statement": "证明 12 * 1 = 12",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0014",
+    "statement": "证明 72 * 0 = 0",
+    "domain": "algebra",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0015",
+    "statement": "证明 38 ^ 0 = 1",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "pow_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0016",
+    "statement": "证明 14 ^ 1 = 14",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "pow_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0017",
+    "statement": "证明 42 + 0 = 42",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0018",
+    "statement": "证明 0 + 37 = 37",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "zero_add"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_easy_0019",
+    "statement": "证明 36 * 1 = 36",
+    "domain": "number_theory",
+    "difficulty": "easy",
+    "ground_truth": [
+      "mul_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0040",
+    "statement": "证明 34 选 2 + 34 选 2plus1 = 34plus1 选 2plus1",
+    "domain": "combinatorics",
+    "difficulty": "hard",
+    "ground_truth": [
+      "choose_succ_succ"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0041",
+    "statement": "证明 10 选 0 > 0 当 0 <= 0 <= 10",
+    "domain": "combinatorics",
+    "difficulty": "hard",
+    "ground_truth": [
+      "factorial_pos"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0042",
+    "statement": "证明 94 + 37 = 37 + 94 且 94 + 0 = 94",
+    "domain": "algebra",
+    "difficulty": "hard",
+    "ground_truth": [
+      "add_comm",
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0043",
+    "statement": "证明 (26 + 90) + 79 = 26 + (90 + 79) 且 26 + 90 = 90 + 26",
+    "domain": "algebra",
+    "difficulty": "hard",
+    "ground_truth": [
+      "add_assoc",
+      "add_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0044",
+    "statement": "证明 100 * (4 + 72) = 100 * 4 + 100 * 72 且 100 * 4 = 4 * 100",
+    "domain": "algebra",
+    "difficulty": "hard",
+    "ground_truth": [
+      "left_distrib",
+      "mul_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0045",
+    "statement": "证明 36 ^ (2 + 4) = 36 ^ 2 * 36 ^ 4",
+    "domain": "number_theory",
+    "difficulty": "hard",
+    "ground_truth": [
+      "pow_succ"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0046",
+    "statement": "证明 13 选 8 + 13 选 8plus1 = 13plus1 选 8plus1",
+    "domain": "combinatorics",
+    "difficulty": "hard",
+    "ground_truth": [
+      "choose_succ_succ"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0047",
+    "statement": "证明 47 选 2 > 0 当 0 <= 2 <= 47",
+    "domain": "combinatorics",
+    "difficulty": "hard",
+    "ground_truth": [
+      "factorial_pos"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0048",
+    "statement": "证明 27 + 92 = 92 + 27 且 27 + 0 = 27",
+    "domain": "algebra",
+    "difficulty": "hard",
+    "ground_truth": [
+      "add_comm",
+      "add_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_hard_0049",
+    "statement": "证明 (11 + 76) + 23 = 11 + (76 + 23) 且 11 + 76 = 76 + 11",
+    "domain": "algebra",
+    "difficulty": "hard",
+    "ground_truth": [
+      "add_assoc",
+      "add_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0020",
+    "statement": "证明 17 ^ 2 >= 17 当 17 >= 1",
+    "domain": "number_theory",
+    "difficulty": "medium",
+    "ground_truth": [
+      "pow_two_le_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0021",
+    "statement": "证明 18 选 0 = 1",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0022",
+    "statement": "证明 41 选 41 = 1",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0023",
+    "statement": "证明 34 选 1 = 34",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0024",
+    "statement": "证明 10 + 40 + 56 = 10 + (40 + 56)",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "add_assoc"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0025",
+    "statement": "证明 (10 + 15) + 99 = 10 + (15 + 99)",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "add_assoc"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0026",
+    "statement": "证明 95 * (60 + 89) = 95 * 60 + 95 * 89",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "left_distrib"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0027",
+    "statement": "证明 (88 + 5) * 13 = 88 * 13 + 5 * 13",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "right_distrib"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0028",
+    "statement": "证明 16 * 38 = 38 * 16",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "mul_comm"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0029",
+    "statement": "证明 42 * 66 * 80 = 42 * (66 * 80)",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "mul_assoc"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0030",
+    "statement": "证明 13 ^ 6 >= 13 当 13 >= 2 且 6 >= 1",
+    "domain": "number_theory",
+    "difficulty": "medium",
+    "ground_truth": [
+      "pow_le_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0031",
+    "statement": "证明 32 * 32 >= 32 当 32 >= 1",
+    "domain": "number_theory",
+    "difficulty": "medium",
+    "ground_truth": [
+      "mul_le_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0032",
+    "statement": "证明 22 ^ 2 >= 22 当 22 >= 1",
+    "domain": "number_theory",
+    "difficulty": "medium",
+    "ground_truth": [
+      "pow_two_le_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0033",
+    "statement": "证明 31 选 0 = 1",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_zero"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0034",
+    "statement": "证明 14 选 14 = 1",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_self"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0035",
+    "statement": "证明 17 选 1 = 17",
+    "domain": "combinatorics",
+    "difficulty": "medium",
+    "ground_truth": [
+      "choose_one"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0036",
+    "statement": "证明 25 + 13 + 39 = 25 + (13 + 39)",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "add_assoc"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0037",
+    "statement": "证明 (19 + 57) + 45 = 19 + (57 + 45)",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "add_assoc"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0038",
+    "statement": "证明 35 * (51 + 70) = 35 * 51 + 35 * 70",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "left_distrib"
+    ],
+    "generated_at": "2026-01-01"
+  },
+  {
+    "id": "prop_medium_0039",
+    "statement": "证明 (65 + 59) * 44 = 65 * 44 + 59 * 44",
+    "domain": "algebra",
+    "difficulty": "medium",
+    "ground_truth": [
+      "right_distrib"
+    ],
+    "generated_at": "2026-01-01"
+  }
+]

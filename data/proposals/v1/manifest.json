@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "seed": 42,
+  "generation_date": "2026-01-01",
+  "proposal_count": 50,
+  "difficulty_distribution": {
+    "easy": 20,
+    "medium": 20,
+    "hard": 10
+  },
+  "domains": [
+    "algebra",
+    "combinatorics",
+    "number_theory"
+  ]
+}

@@ -3,7 +3,7 @@
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from .config import Config, ModelConfig
+from ..config import Config, ModelConfig
 from ..exceptions import ModelDisabledError, ModelConfigError
 
 

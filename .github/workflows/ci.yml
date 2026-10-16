@@ -152,17 +152,22 @@ jobs:
           fi
           ls -la release/
 
-      # 断言平台大类正确（防"在 mac 上打出 win64 名"这类错标）
+      # 断言平台标签落在 zip 名里（防"在 mac 上打出 win64 名"这类错标）
+      # 注意：模式以 `-` 开头会被 grep 当成选项 → 用 `grep -e` 显式给模式，不用裸模式
       - name: Assert platform label
         shell: bash
         run: |
           GLOB="${{ matrix.suffix_glob }}"
-          COUNT=$(ls release/*.zip 2>/dev/null | wc -l)
-          test "$COUNT" -ge 1 || { echo "未产出 zip"; ls -la release/; exit 1; }
-          if ! ls release/*.zip | grep -qE "-(linux-|win|macos-)"; then
-            echo "zip 名缺平台后缀"; ls release/; exit 1
-          fi
-          echo "平台标签检查：期望含 ${GLOB}"
+          ZIPS=$(ls release/*.zip 2>/dev/null || true)
+          [ -n "$ZIPS" ] || { echo "未产出 zip"; ls -la release/; exit 1; }
+          case "$GLOB" in
+            "win64")   PATTERN="-win64.zip" ;;
+            "linux-*") PATTERN="-linux-" ;;
+            "macos-*") PATTERN="-macos-" ;;
+            *) echo "未知 suffix_glob: $GLOB"; exit 1 ;;
+          esac
+          echo "$ZIPS" | grep -e "$PATTERN" || { echo "zip 名缺平台后缀（期望 $PATTERN）"; ls release/; exit 1; }
+          echo "OK: 平台标签正确（$PATTERN）"
 
       # 打包确定性自测：两次独立打包必须逐字节一致
       - name: Assert packaging determinism

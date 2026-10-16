@@ -1,7 +1,7 @@
 """依赖图构建器（确定性图算法）"""
 
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import json
 from collections import deque
@@ -44,6 +44,7 @@ class DependencyGraph:
         """
         self.index_path = index_path
         self.index: Dict[str, Dict[str, Any]] = {}
+        self.modules: set = set()  # 所有被覆盖的模块
         self._load_index()
     
     def _load_index(self):
@@ -57,10 +58,13 @@ class DependencyGraph:
                 if line.strip():
                     data = json.loads(line)
                     self.index[data["name"]] = data
+                    self.modules.add(data.get("module", ""))
     
     def build(self, theorems: List[str]) -> DepGraphResult:
         """
         构建依赖图
+        
+        K2 口径：index_gap ≠ 定理不存在
         
         Args:
             theorems: 定理列表
@@ -68,16 +72,72 @@ class DependencyGraph:
         Returns:
             DepGraphResult: 依赖图结果
         """
-        # TODO: 实现依赖图构建
-        raise NotImplementedError("依赖图构建待实现")
+        # 构建图结构
+        graph, nodes = self._build_graph(theorems)
+        
+        # 检测断链和 index_gap
+        broken_refs, index_gaps = self._detect_broken_refs(graph)
+        
+        # 计算最短路径（从第一个节点开始）
+        shortest_paths = {}
+        if nodes:
+            shortest_paths = self._find_shortest_paths(graph, nodes[0])
+        
+        # 构建边列表
+        edges = []
+        for from_node, deps in graph.items():
+            for to_node in deps:
+                edges.append(DepGraphEdge(
+                    from_node=from_node,
+                    to_node=to_node,
+                    type="depends_on"
+                ))
+        
+        return DepGraphResult(
+            nodes=[DepGraphNode(id=n, module=self.index.get(n, {}).get("module", "")) for n in nodes],
+            edges=edges,
+            broken_refs=broken_refs,
+            index_gaps=index_gaps,
+            shortest_paths=shortest_paths
+        )
     
     def _build_graph(self, theorems: List[str]) -> tuple:
-        """构建图结构"""
-        # TODO: 实现
-        raise NotImplementedError("_build_graph 待实现")
+        """
+        构建图结构
+        
+        Args:
+            theorems: 定理列表
+            
+        Returns:
+            Tuple[graph, nodes]
+        """
+        graph = {}
+        nodes = []
+        
+        for theorem in theorems:
+            if theorem not in self.index:
+                continue
+            
+            nodes.append(theorem)
+            deps = self.index[theorem].get("deps", [])
+            graph[theorem] = deps
+        
+        return graph, nodes
     
     def _detect_broken_refs(self, graph: Dict[str, List[str]]) -> tuple:
-        """检测断链"""
+        """
+        检测断链
+        
+        K2 口径：index_gap ≠ 定理不存在
+        - broken_refs: 索引覆盖范围内但当前定理未收录的依赖
+        - index_gaps: 索引未覆盖的模块中的定理（可能是用户误导）
+        
+        Args:
+            graph: 依赖图
+            
+        Returns:
+            Tuple[broken_refs, index_gaps]
+        """
         broken_refs = []
         index_gaps = []
         
@@ -85,22 +145,63 @@ class DependencyGraph:
             for dep in deps:
                 if dep not in self.index:
                     # 检查是否在索引覆盖范围内
-                    # 简化判断：如果模块名在索引中出现过，则可能是断链
-                    # 否则是 index_gap
                     if self._is_module_covered(dep):
                         broken_refs.append(dep)
                     else:
                         index_gaps.append(dep)
         
+        # 去重
+        broken_refs = list(set(broken_refs))
+        index_gaps = list(set(index_gaps))
+        
         return broken_refs, index_gaps
     
     def _is_module_covered(self, theorem: str) -> bool:
-        """检查定理所在模块是否被索引覆盖"""
-        # TODO: 实现
-        raise NotImplementedError("_is_module_covered 待实现")
+        """
+        检查定理所在模块是否被索引覆盖
+        
+        通过模块名前缀匹配来判断
+        
+        Args:
+            theorem: 定理名
+            
+        Returns:
+            bool: 是否被覆盖
+        """
+        # 尝试从定理名推断模块
+        # 例如：add_assoc 可能属于 Mathlib.Algebra.Group.Defs
+        # 这里使用简单的启发式：检查是否有任何模块包含该定理名作为后缀
+        
+        # 更精确的方法：检查索引中是否有同模块的定理
+        for module in self.modules:
+            # 检查模块名是否包含定理名的一部分
+            # 这是一个简化实现
+            pass
+        
+        # 简化实现：如果定理名在索引中，则模块被覆盖
+        # 否则，检查是否有同前缀的定理
+        if theorem in self.index:
+            return True
+        
+        # 检查是否有同前缀的定理（例如 add_* 系列）
+        prefix = theorem.split('_')[0] + '_'
+        for name in self.index:
+            if name.startswith(prefix):
+                return True
+        
+        return False
     
     def _find_shortest_paths(self, graph: Dict[str, List[str]], start: str) -> Dict[str, List[str]]:
-        """BFS 求最短路径"""
+        """
+        BFS 求最短路径
+        
+        Args:
+            graph: 依赖图
+            start: 起始节点
+            
+        Returns:
+            Dict[node, path]
+        """
         paths = {}
         queue = deque([(start, [start])])
         visited = {start}
@@ -120,10 +221,131 @@ class DependencyGraph:
         """
         导出 HTML（0 外链）
         
+        K8 口径：HTML 0 外链
+        
         Args:
             result: 依赖图结果
             output_path: 输出路径
         """
-        # TODO: 实现 HTML 导出
-        # 内嵌 CSS/JS，无 CDN 引用
-        raise NotImplementedError("HTML 导出待实现")
+        # 生成内嵌 CSS/JS 的 HTML
+        html_content = self._generate_html(result)
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+    
+    def _generate_html(self, result: DepGraphResult) -> str:
+        """
+        生成 HTML 内容
+        
+        Args:
+            result: 依赖图结果
+            
+        Returns:
+            HTML 字符串
+        """
+        # 生成节点列表
+        nodes_html = "\n".join(
+            f'            <li>{node.id} ({node.module})</li>'
+            for node in result.nodes
+        )
+        
+        # 生成边列表
+        edges_html = "\n".join(
+            f'            <li>{edge.from_node} → {edge.to_node}</li>'
+            for edge in result.edges
+        )
+        
+        # 生成断链列表
+        broken_html = "\n".join(
+            f'            <li class="broken">{ref}</li>'
+            for ref in result.broken_refs
+        ) if result.broken_refs else '            <li>无</li>'
+        
+        # 生成 index_gap 列表
+        gaps_html = "\n".join(
+            f'            <li class="gap">{gap}</li>'
+            for gap in result.index_gaps
+        ) if result.index_gaps else '            <li>无</li>'
+        
+        html = f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>依赖图报告</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }}
+        h1 {{ color: #333; }}
+        h2 {{ color: #555; border-bottom: 1px solid #ddd; padding-bottom: 10px; }}
+        .section {{ background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        ul {{ list-style: none; padding: 0; }}
+        li {{ padding: 5px 0; border-bottom: 1px solid #eee; }}
+        .broken {{ color: #d32f2f; font-weight: bold; }}
+        .gap {{ color: #f57c00; font-weight: bold; }}
+        .stats {{ display: flex; gap: 20px; margin: 20px 0; }}
+        .stat {{ background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .stat-value {{ font-size: 24px; font-weight: bold; color: #1976d2; }}
+        .stat-label {{ color: #666; font-size: 14px; }}
+    </style>
+</head>
+<body>
+    <h1>依赖图报告</h1>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value">{len(result.nodes)}</div>
+            <div class="stat-label">节点数</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{len(result.edges)}</div>
+            <div class="stat-label">边数</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{len(result.broken_refs)}</div>
+            <div class="stat-label">断链</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value">{len(result.index_gaps)}</div>
+            <div class="stat-label">Index Gaps</div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>节点</h2>
+        <ul>
+{nodes_html}
+        </ul>
+    </div>
+    
+    <div class="section">
+        <h2>边</h2>
+        <ul>
+{edges_html}
+        </ul>
+    </div>
+    
+    <div class="section">
+        <h2>断链（Broken Refs）</h2>
+        <p>索引覆盖范围内但当前定理未收录的依赖</p>
+        <ul>
+{broken_html}
+        </ul>
+    </div>
+    
+    <div class="section">
+        <h2>Index Gaps</h2>
+        <p>索引未覆盖的模块中的定理（可能是用户误导）</p>
+        <ul>
+{gaps_html}
+        </ul>
+    </div>
+</body>
+</html>"""
+        
+        return html

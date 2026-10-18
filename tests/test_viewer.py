@@ -71,19 +71,31 @@ class TestViewerWiring:
     def _source(self):
         return (VIEWER_DIR / "main.py").read_text(encoding="utf-8")
 
-    def test_search_button_is_connected(self):
+    def test_buttons_are_connected(self):
+        """按钮必须真的 connect 到槽函数（v0.1.0 的「检索定理」按钮没有 connect）。
+
+        用 AST 定位 `.connect(...)`，再用 `ast.get_source_segment` 取被调用者表达式——
+        `ast.unparse` 在 Python 3.8 不存在，而 CI 有 3.8 矩阵。
+        """
         src = self._source()
         tree = ast.parse(src)
-        found = []
+        lines = src.splitlines()
+        targets = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) \
-                    and node.func.attr == "connect":
-                target = ast.unparse(node.func.value) if hasattr(ast, "unparse") else ""
-                found.append(target)
-        assert any("search_button.clicked" in t for t in found), \
-            "检索按钮未 connect 到任何槽函数（空壳）"
-        assert any("export_button.clicked" in t for t in found), \
-            "导出按钮未 connect 到任何槽函数（空壳）"
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if not (isinstance(func, ast.Attribute) and func.attr == "connect"):
+                continue
+            value = func.value  # e.g. self.search_button.clicked
+            seg = ast.get_source_segment(src, value)
+            if seg is None:  # 兜底：按行列手工切片
+                seg = lines[value.lineno - 1][value.col_offset:value.end_col_offset]
+            targets.append(seg.replace(" ", ""))
+        assert any("search_button.clicked" in t for t in targets), \
+            "检索按钮未 connect 到任何槽函数（空壳）；实际 connect 目标: %s" % targets
+        assert any("export_button.clicked" in t for t in targets), \
+            "导出按钮未 connect 到任何槽函数（空壳）；实际 connect 目标: %s" % targets
 
     def test_window_calls_controller(self):
         src = self._source()

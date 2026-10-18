@@ -292,8 +292,30 @@ theorem add_assoc {α : Type u_1} [Add α] [AddSemigroup α] (a b c : α) :
             
             output_path = tmp_path / "output"
             manifest = build_index_with_commit(tmp_path, output_path, "abc123def")
-            
-            assert manifest["commit_hash"] == "abc123def"
+
+            # v0.1.1：溯源字段改为 upstream_commit，且拒绝 unknown
+            assert manifest["upstream_commit"] == "abc123def"
+            assert "unknown" not in str(manifest.get("upstream_commit", "")).lower()
+
+    def test_build_index_rejects_unknown_commit(self):
+        """拒绝 unknown 作为上游 commit（preflight ㉗：溯源不得造假）"""
+        with TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            (tmp_path / "Test.lean").write_text("theorem test : True := by sorry")
+            with pytest.raises(ValueError):
+                build_index_with_commit(tmp_path, tmp_path / "out", "unknown")
+
+    def test_sample_index_manifest_is_honest(self):
+        """随包样例索引必须声明 kind 与规模，且不写 unknown commit"""
+        import json
+        manifest = json.loads(
+            (Path(__file__).resolve().parents[1] / "data" / "index" / "manifest.json")
+            .read_text(encoding="utf-8"))
+        assert manifest["index_kind"] == "curated-sample"
+        assert manifest["theorem_count"] == 35
+        assert manifest.get("upstream_commit") is None
+        assert "unknown" not in json.dumps(manifest, ensure_ascii=False).lower()
+        assert "provenance_note" in manifest
     
     def test_build_index_nonexistent_path(self):
         """不存在的路径抛出异常"""

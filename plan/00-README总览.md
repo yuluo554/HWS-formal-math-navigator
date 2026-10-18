@@ -23,7 +23,10 @@
 | plan/HANDOFF-M5.md | 跨会话交接快照（M5 续接用） | ✅ M5 收尾落盘（2026-10-16） |
 | plan/HANDOFF-M6.md | 跨会话交接快照（M6 续接用） | ✅ M6 收尾落盘（2026-10-16） |
 | plan/DEFERRED-ITEMS.md | 缓议项清零表 | ✅ M6 落盘 |
-| plan/RELEASE-M6.md | 发布留档（三件套之一） | ✅ M6 落盘 |
+| plan/RELEASE-M6.md | v0.1.0 发布留档 | ✅ M6 落盘 |
+| plan/RELEASE-M7.md | **v0.1.1 发布留档**（回访修复三件套） | ✅ M7 落盘 |
+| docs/技术报告.md | 技术报告（§三 第 3 项实物） | ✅ v0.1.1 |
+| docs/demo/demo.gif | 查看器演示（§三 第 7 项实物） | ✅ v0.1.1 |
 | data/README.md | 依据查证/可获取性/合成数据纪律 | ✅ v1 定稿 |
 
 ## 二、决策记录表
@@ -68,12 +71,30 @@
 | 骨架生成（模型在环） | 模型开关（端点） | 可插拔开关；默认关时接受已形式化输入 | 设置页可配端点；关闭时全功能降级 | ✅ 设计已定 + M4 实现 |
 | 内核验证（硬真值） | Lean 4 ✅ | **依赖用户自备 Lean 工具链**（显式前置条件） | 用户自备工具链后可复跑；未装时报告标注"未执行" | ✅ M4 实现（报告分列三态） |
 | 无 Lean 工具链降级路径 | 自产 | 随包代码 | 实测：未装 Lean 时检索/依赖图仍可用 | ✅ M4 实测通过 |
-| mathlib4 索引元数据快照 | 自产（含 commit hash + sha256） | 随包数据白名单 | sha256 留档；重建索引可复跑 | ✅ M1 完成 |
+| 索引元数据快照 | 自产：随包 **35 条样例**（`index_kind=curated-sample` + sha256） | 随包数据白名单 | sha256 留档；全量索引由 `build_index.py --commit-hash` 自建（拒绝 unknown） | ✅ v0.1.1 订正（原写"含 commit hash"，实为 `unknown`） |
 | 合成命题集（可/不可形式化对照） | 自产生成器 | 随包数据白名单 | 生成器可复跑；覆盖度口径落 manifest | ✅ M1 完成 |
 | 预置模型输出快照 | 自产（含生成参数+sha256） | 随包数据白名单 | sha256 留档；离线复跑一致 | ✅ M1 完成（**注**：M6 复核发现原为 placeholder，已由 `tools/gen_snapshots.py` 实生成并做 `--check` 位级一致） |
-| 公开题库回归集 | ProofNet-Verified / miniF2F 风格 | 不入包（可选下载） | 逐库 license 核对后接入 | ⬜ 待核对 |
-| Lean/elan 版本与安装指引 | 官方文档 | README + 题面 | 入库时核对版本要求 | ⬜ 待核对 |
-| 模型许可合规 | OPENPANGU MODEL LICENSE 2.0 | 不分发权重即合规 | 入库时核对条款措辞 | ⬜ 待核对 |
+| 公开题库回归集 | ProofNet-Verified / miniF2F 风格 | 不入包（可选下载） | 逐库 license 核对后接入 | ⬜ 扩展项（**不进判定路径**，首期不交付） |
+| Lean/elan 版本与安装指引 | 官方文档 | README + 题面 | 入库时核对版本要求 | ⬜ 扩展项（用户自备前置条件，非交付物） |
+| 模型许可合规 | OPENPANGU MODEL LICENSE 2.0 | 不分发权重即合规 | 入库时核对条款措辞 | ⬜ 扩展项（不随包分发权重，不构成交付承诺） |
+| **桌面查看器**（检索/构图/导出） | 自产（controller + PySide6 窗口） | 随包双 exe（`hws-formal-math-viewer`） | `viewer --selftest` 四步 + `test_viewer.py` 12 条 | ✅ v0.1.1 实现并随包 |
+| **技术报告 / 演示 GIF** | 自产 | 仓内 `docs/技术报告.md`、`docs/demo/demo.gif` | `git ls-files` 可见 + Release 附件 `demo.gif` | ✅ v0.1.1 补齐 |
+
+## 三之二、招牌动词表（能力名词 → 交付态命令 → 断言基准）
+
+> 口径：填不出的词不得进标题、定位宣言、README 首段或输出 schema（preflight ⑳）。
+> v0.1.1 补建（原题缺此表，导致"查看器"只在文档里存在）。
+
+| 能力名词 | 哪条交付态命令产出它 | 哪条基准/测试断言它 |
+|---|---|---|
+| 定理检索（BM25） | `hws-formal-math search "<查询>"` 输出定理/模块/分数；查看器「检索定理」按钮同一 controller | `bench --suite retrieval`（Recall@k / MRR）+ `tests/test_retriever.py` 双跑一致 |
+| 依赖图与导航 | `export` 与查看器「导出依赖图 HTML」输出节点/边/断链/index_gap | `bench --suite depgraph`（节点/边/index_gap 期望）+ `test_viewer.py::test_build_graph_records_gaps_separately` |
+| 证明骨架生成 | `hws-formal-math generate "<命题>"` | `tests/test_skeleton_gen.py` + 预置快照 `--check` 位级一致 |
+| 内核判定（硬真值） | `hws-formal-math verify "<Lean 代码>"` 三态输出 | `tests/test_kernel.py`（PASS_NO_SORRY / PASS_WITH_SORRY / FAIL / SKIPPED 分列） |
+| index_gap 区分 | 依赖图输出 `index_gaps` 与 `broken_refs` 分列 | `test_viewer.py` + `test_depgraph.py::test_index_gap_distinguished` |
+| 离线可用（零模型） | 上述全部命令在无模型端点、无 Lean 时仍可跑 | CI 四矩阵 `selftest` + `bench retrieval/depgraph` |
+| 桌面查看器 | `hws-formal-math-viewer`（窗口）/ `--selftest`（零 Qt 四步链路） | `tests/test_viewer.py` 12 条（控制器 6 + 接线 4 + 打包 2） |
+| 0 外链 HTML 报告 | 查看器导出 / `export --format html` | `test_viewer.py::test_export_html_has_no_external_links` |
 
 ## 四、里程碑初稿
 
@@ -85,6 +106,7 @@
 | **M4 集成层** | CLI 入口（argparse） + 编排层（检索→骨架→验证→报告） + 报告生成器（HTML 0外链 + JSON 逐字节可复现） | 每模块配测试（含变异验证 + 确定性测试）；干净环境验证通过；控制台脚本与 python -m 双入口可用 | ✅ 完成 |
 | **M5 发布与交付** | 打包 exe（PyInstaller ≥6） + 干净环境验证（全新 clone + 全新 venv） + 前置条件声明 | 免安装 exe 内**检索与依赖图**可达；**内核验证依赖用户自备 Lean**（声明与实现逐字一致）；脱敏四步 + 产物扫描 | ✅ 完成 |
 | **M6 收尾固化** | CI 首跑全绿 + README 状态行转正 + 缓议项清零 + 发布后元信息终检 + **发布物本体复核** + **跨平台交付** | CI 全绿（四矩阵测试 + 三平台构建）；README 状态行转正；缓议项逐条全表落档；topics/assets/digest 与留档一致；**三平台附件真下载跑通** | ✅ 完成 |
+| **M7 回访修复（v0.1.1）** | 出题回访发现"承诺 vs 实物"三类缺陷，逐条修复并出新补丁版本 | ①查看器真实现（接线+零Qt自检+双exe打包+12条测试）；②索引溯源诚实化（样例 kind + 拒绝 unknown）；③技术报告与演示 GIF 落仓并进附件；④`check_release.py` 无 FAIL | ✅ 2026-10-18 完成 |
 
 ## 五、本批新纪律备忘（跨三题共用）
 

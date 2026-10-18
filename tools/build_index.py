@@ -73,8 +73,10 @@ def build_index(mathlib4_path: Path, output_path: Path) -> Dict[str, Any]:
     
     # 5. 生成 manifest
     manifest = {
-        "version": "1.0",
-        "commit_hash": "unknown",  # 需要用户传入或从 git 获取
+        "version": "1.1",
+        "index_kind": "extracted",       # 由 mathlib4 源码实抽
+        "upstream": "mathlib4",
+        "upstream_commit": None,          # 由 build_index_with_commit 填入；不留 "unknown"
         "sha256": sha256_hash,
         "generation_date": GENERATION_DATE,
         "theorem_count": len(theorems),
@@ -106,8 +108,10 @@ def build_index_with_commit(
     Returns:
         索引 manifest
     """
+    if not commit_hash or commit_hash.strip().lower() in ("unknown", "none", "null", "-"):
+        raise ValueError("commit_hash 必须是 mathlib4 的真实 commit（不允许 unknown）")
     manifest = build_index(mathlib4_path, output_path)
-    manifest["commit_hash"] = commit_hash
+    manifest["upstream_commit"] = commit_hash
     
     # 更新 manifest 文件
     manifest_file = output_path / "manifest.json"

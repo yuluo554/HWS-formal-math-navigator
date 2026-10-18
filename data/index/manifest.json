@@ -1,6 +1,8 @@
 {
-  "version": "1.0",
-  "commit_hash": "unknown",
+  "version": "1.1",
+  "index_kind": "curated-sample",
+  "upstream": "mathlib4",
+  "upstream_commit": null,
   "sha256": "74b58d138f3e466917ed9f2056ec16177534fa59231273d523fcc7f8b3d3855f",
   "generation_date": "2026-01-01",
   "theorem_count": 35,
@@ -13,5 +15,6 @@
     "topology": 0,
     "logic": 2,
     "other": 0
-  }
+  },
+  "provenance_note": "随包分发的**精选样例索引**（35 条），用于离线检索 / 依赖图 / 基准的可复跑演示。定理名取自 mathlib4 常见定理；签名为便于演示的简化写法，**不是**逐字抽取结果。完整索引由 tools/build_index.py 从用户指定的 mathlib4 commit 抽取：python tools/build_index.py --mathlib4 <path> --commit-hash <sha> --output data/index"
 }

@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/yuluo554/HWS-formal-math-navigator/actions/workflows/ci.yml/badge.svg)](https://github.com/yuluo554/HWS-formal-math-navigator/actions/workflows/ci.yml)
 
-**状态**：✅ v0.1.0 已发布（[Release](https://github.com/yuluo554/HWS-formal-math-navigator/releases/tag/v0.1.0)）
+**状态**：✅ v0.1.1 已发布（[Release](https://github.com/yuluo554/HWS-formal-math-navigator/releases/tag/v0.1.1)）
 
 ## 项目定位
 
@@ -23,10 +23,13 @@ LLM 聊数学会"看起来对"，Lean 内核只认真假。本工具把**长上�
 
 | 平台 | 附件 | 说明 |
 |------|------|------|
-| **Windows x64** | `hws-formal-math-<tag>-win64.zip` | 解压后运行 `hws-formal-math.exe` |
-| **Linux x86_64** | `hws-formal-math-<tag>-linux-x86_64.zip` | 解压后运行 `./hws-formal-math`（zip 已保留可执行位） |
-| **macOS** | `hws-formal-math-<tag>-macos-*.zip` | 解压后运行 `./hws-formal-math`；首次运行可能需在「隐私与安全性」放行 |
-| 源码安装 | `*.tar.gz` / `*.whl` | `pip install`（Python 3.8+） |
+| **Windows x64** | `hws-formal-math-<tag>-win64.zip` | 解压后运行 `hws-formal-math.exe`（CLI）或 `hws-formal-math-viewer.exe`（桌面查看器） |
+| **Linux x86_64** | `hws-formal-math-<tag>-linux-x86_64.zip` | 解压后运行 `./hws-formal-math` / `./hws-formal-math-viewer`（zip 已保留可执行位） |
+| **macOS** | `hws-formal-math-<tag>-macos-*.zip` | 同上；首次运行可能需在「隐私与安全性」放行 |
+| 源码安装 | `*.tar.gz` / `*.whl` | `pip install`（Python 3.8+）；GUI 需 `[gui]` extra |
+
+> **每个 zip 内含两个可执行件**：`hws-formal-math`（CLI）与 `hws-formal-math-viewer`（桌面查看器）。
+> 两者共用同一份 `_internal/data/`（索引/命题/快照）。
 
 ```bash
 # 校验下载件（Linux/macOS）
@@ -130,6 +133,21 @@ hws-formal-math generate "theorem my_thm (n : ℕ) : n + 0 = n := by sorry"
 hws-formal-math verify "theorem add_zero (n : ℕ) : n + 0 = n := by simp"
 ```
 
+### 桌面查看器
+
+```bash
+# 零 Qt 自检（CI / 无图形环境可用）：索引 → 检索 → 依赖图 → 导出 HTML 四步
+hws-formal-math-viewer --selftest
+# 等价：python -m hws_formal_math.viewer --selftest
+
+# 启动窗口（需要 PySide6：pip install -e ".[gui]"）
+hws-formal-math-viewer
+```
+
+窗口功能：输入命题 → 「检索定理」列出 Top-K（定理/模块/分数）→ 选中一行即构建依赖图
+（节点/边/断链/index_gap 分列）→ 「导出依赖图 HTML」写出 0 外链单文件。
+未装 PySide6 时窗口模式返回退出码 **3**（依赖缺失），不会静默当成成功。
+
 ### 退出码语义
 
 | 码 | 语义 |
@@ -166,6 +184,20 @@ src/hws_formal_math/
 └── templates/          # 报告模板
 ```
 
+## 索引：随包是样例，全量需自建
+
+随包 `data/index/` 是 **35 条精选样例索引**（`manifest.json` 的 `index_kind = curated-sample`），
+用于离线检索 / 依赖图 / 基准的可复跑演示——**不是** mathlib4 全量索引。
+全量索引由用户用自己指定的 mathlib4 版本构建（只存元数据，不存源码）：
+
+```bash
+git clone https://github.com/leanprover-community/mathlib4
+python tools/build_index.py --mathlib4 ./mathlib4     --commit-hash $(git -C mathlib4 rev-parse HEAD) --output data/index
+```
+
+`build_index.py` 强制要求真实 commit（拒绝 `unknown`），manifest 写 `index_kind=extracted`
+与 `upstream_commit`，便于复现与对账。
+
 ## 确定性纪律
 
 - **检索**：同输入同结果，零模型依赖
@@ -189,6 +221,8 @@ src/hws_formal_math/
 - [plan/03-基准套件设计.md](plan/03-基准套件设计.md) - 基准设计
 - [plan/04-测试与验收.md](plan/04-测试与验收.md) - 测试与验收
 - [plan/05-发布与交付.md](plan/05-发布与交付.md) - 发布与交付
+- [docs/技术报告.md](docs/技术报告.md) - 技术报告（索引抽取/BM25/内核语义/依赖图/基准）
+- [docs/demo/demo.gif](docs/demo/demo.gif) - 查看器演示（检索 → 依赖图 → 导出）
 
 ## 许可证
 

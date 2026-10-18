@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hws-formal-math-navigator"
-version = "0.1.0"
+version = "0.1.1"
 description = "形式化数学库导航与证明骨架生成器"
 readme = "README.md"
 requires-python = ">=3.8"

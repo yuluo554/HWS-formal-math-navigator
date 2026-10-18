@@ -79,8 +79,28 @@ python <skill>/scripts/check_release.py .      # 0 FAIL（发布后）
 
 ## 五、tag 后追加事实
 
-（本节在 tag 之后按实测回填；tag 时点内容以上文为准。）
+> 本节内容产生于 tag 之后，与 §一「tag 时点事实」分开记录（口径见 preflight ㉒）。
 
-- CI run：待回填
-- Release 附件清单与 digest：待回填
-- 真下载复核（中立目录 selftest）：待回填
+**tag 提交**：`93a5d91`（CI 绿）。tag 推送后 CI run `39120496486` **success**。
+
+**Release 附件**（`gh release view v0.1.1 --json assets` 回读）：
+
+| 附件 | 大小 |
+|---|---|
+| `hws-formal-math-v0.1.1-linux-x86_64.zip` | 54,058,762 B |
+| `hws-formal-math-v0.1.1-macos-arm64.zip` | 38,109,444 B |
+| `hws-formal-math-v0.1.1-win64.zip` | 21,794,184 B |
+| `hws_formal_math_navigator-0.1.1-py3-none-any.whl` | 49,239 B |
+| `hws_formal_math_navigator-0.1.1.tar.gz` | 69,411 B |
+| `SHA256SUMS.txt` | 530 B |
+| `demo.gif` | 42,636 B |
+
+**真下载复核**（中立目录、`env -u PYTHONPATH -u PYTHONHOME`）：
+
+| 命令 | 结果 |
+|---|---|
+| `hws-formal-math.exe selftest` | exit 0，冻结态数据目录随包 |
+| `hws-formal-math-viewer.exe --selftest` | exit 0，索引 35 条 / 检索 / 4 节点 8 边 / 导出 HTML 0 外链 |
+
+**zip 形态**：68 个条目，含 `hws-formal-math.exe` 与 `hws-formal-math-viewer.exe`（双 exe 同包）。
+原 v0.1.0 的 Windows 包经 Qt 组件裁剪后由 112MB 降到 21.8MB。

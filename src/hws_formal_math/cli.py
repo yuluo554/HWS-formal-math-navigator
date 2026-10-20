@@ -1,23 +1,29 @@
 """CLI 入口"""
 
 import json
-import os
+import shutil
 import sys
 import argparse
+import tempfile
 from pathlib import Path
 from typing import Optional
 
-from .config import Config
+from . import __version__
+from .config import Config, default_fixtures_dir
 from .exceptions import (
     ExitCode,
     HWSFormalMathError,
     IndexNotFoundError,
     ModelDisabledError,
+    ModelConfigError,
 )
 from .logging import setup_logging
 from .core import Orchestrator, ReportGenerator, ReportConfig
 
 logger = setup_logging()
+
+# export 未指定 --proposition 时使用的示例命题（D9：以前是写死的隐式行为）
+EXAMPLE_PROPOSITION = "加法结合律"
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -37,6 +43,12 @@ def create_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="索引目录路径（默认: 随包 data/index）"
+    )
+    # D7c：README/常识都期望有 --version（此前 unrecognized arguments exit 2）
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"hws-formal-math {__version__}",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
@@ -67,7 +79,12 @@ def create_parser() -> argparse.ArgumentParser:
     # export 命令
     export_parser = subparsers.add_parser("export", help="导出产物")
     export_parser.add_argument("--format", choices=["html", "json"], default="html")
-    export_parser.add_argument("--output", "-o", type=Path, help="输出路径")
+    export_parser.add_argument("--output", "-o", type=Path, help="输出文件路径")
+    export_parser.add_argument(
+        "--proposition", "-p",
+        default=None,
+        help="要导出报告的命题（默认：内置示例命题「加法结合律」）"
+    )
 
     return parser
 
@@ -104,6 +121,11 @@ def main(argv=None) -> int:
             parser.print_help()
             return ExitCode.USAGE_ERROR
 
+    except ModelConfigError as e:
+        # D7a：README 的退出码表写了 4=配置错误，但此前 CONFIG_ERROR 只有定义、无任何 return。
+        # 模型端点缺失/配置非法是唯一明确的"配置错误"来源（见 ModelGateway.generate_skeleton）。
+        logger.error(f"配置错误: {e}")
+        return ExitCode.CONFIG_ERROR
     except IndexNotFoundError as e:
         logger.error(f"索引未找到: {e}")
         return ExitCode.FAILURE
@@ -157,9 +179,15 @@ def handle_generate(args, config: Config) -> int:
         print("=== 证明骨架 ===")
         print(skeleton)
         return ExitCode.SUCCESS
+    except ModelConfigError:
+        # 配置类错误向外冒泡 → main() 统一映射到退出码 4（D7a）
+        raise
     except ModelDisabledError as e:
         logger.error(f"骨架生成失败: {e}")
         return ExitCode.DEPENDENCY_MISSING
+    except NotImplementedError as e:
+        logger.error(f"骨架生成失败: {e}（模型端点尚未实现，见 README「模型端点」披露）")
+        return ExitCode.FAILURE
     except Exception as e:
         logger.error(f"骨架生成失败: {e}")
         return ExitCode.FAILURE
@@ -235,6 +263,8 @@ def handle_bench(args, config: Config) -> int:
     for name in selected:
         _print_suite_result(results[name])
 
+    _print_coverage(results.get("coverage"))
+
     if args.report:
         report_path = Path("bench-report.json")
         with open(report_path, "w", encoding="utf-8", newline="\n") as f:
@@ -246,16 +276,20 @@ def handle_bench(args, config: Config) -> int:
 
 
 def _find_fixtures_dir() -> Optional[Path]:
-    """定位基准用例目录（源码态在仓库根，冻结态在 exe 同级）"""
+    """定位基准用例目录（源码态在仓库根，冻结态在 exe 同级，装态在 share/）
+
+    D1 实测：pip 装完 bench --suite retrieval 报"未找到基准用例目录 tests/fixtures"
+    exit 2 —— 因为候选里只有仓库布局。装态回落见 config.default_fixtures_dir()。
+    """
     candidates = [
         Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures",
-        Path.cwd() / "tests" / "fixtures",
         Path(getattr(sys, "_MEIPASS", Path.cwd())) / "tests" / "fixtures",
+        Path.cwd() / "tests" / "fixtures",
     ]
     for candidate in candidates:
         if candidate.is_dir():
             return candidate
-    return None
+    return default_fixtures_dir()
 
 
 def _print_suite_result(result: dict) -> None:
@@ -287,6 +321,71 @@ def _print_suite_result(result: dict) -> None:
 
 
 
+def _verify_data_manifests(data_dir: Path) -> list:
+    """数据自证：校验 manifest 登记的 sha256 ↔ 磁盘实算（D4）
+
+    返回不一致项的描述列表（空列表 = 通过）。只校验**登记了** sha256 的条目；
+    缺登记不算失败（严格模式在 tools/check_data_integrity.py --strict）。
+    """
+    import hashlib
+
+    checks = (
+        ("index/manifest.json", "index/theorems.jsonl"),
+        ("snapshots/manifest.json", "snapshots/v1/snapshots.json"),
+        ("snapshots/v1/manifest.json", "snapshots/v1/snapshots.json"),
+        ("proposals/v1/manifest.json", "proposals/v1/proposals.json"),
+    )
+    drift = []
+    for manifest_rel, target_rel in checks:
+        manifest_path = data_dir / manifest_rel
+        target_path = data_dir / target_rel
+        if not manifest_path.is_file() or not target_path.is_file():
+            continue
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                expected = json.load(f).get("sha256")
+        except (OSError, ValueError):
+            continue
+        if not expected:
+            continue
+        actual = hashlib.sha256(target_path.read_bytes()).hexdigest()
+        if expected != actual:
+            drift.append(f"{target_rel}（期望 {expected[:16]}… 实际 {actual[:16]}…）")
+    return drift
+
+
+def _print_coverage(coverage: Optional[dict]) -> None:
+    """打印领域覆盖度（D8）
+
+    以前 compute_domain_coverage 的结果只进 `--report` 的 JSON，人读输出里完全看不到，
+    于是 analysis 4/5、number_theory 0/5 判 insufficient 也没人知道。
+
+    口径：**只打印，不改判**。原因是随包索引是 35 条 curated-sample，
+    两条 insufficient 的根因是"领域分类靠 `domain in module`，而随包模块名是
+    Mathlib.Data.*" —— 把它接进 all_passed 会让基准恒红，把它静默降级成 verified
+    则是开后门。所以：如实打印，门禁判定权交给用户/后续批次（见 plan/RELEASE-M8.md）。
+    """
+    if not coverage:
+        return
+
+    domains = coverage.get("domains", {})
+    if not domains:
+        return
+
+    print("[coverage] 领域覆盖度（最低项 vs 索引实际，**不参与 all_passed 判定**）")
+    for name, item in sorted(domains.items()):
+        status = item.get("status", "?")
+        mark = "✅" if status == "verified" else "⚠️ "
+        print(f"  {mark} {name}: {item.get('actual', 0)}/{item.get('min_theorems', 0)}（{status}）")
+
+    if not coverage.get("all_verified", False):
+        insufficient = [
+            n for n, i in sorted(domains.items()) if i.get("status") != "verified"
+        ]
+        print(f"  → 未达标领域: {', '.join(insufficient)}"
+              f"（随包索引为 curated-sample 35 条，非全量；覆盖度不代表 mathlib4 全库）")
+
+
 def handle_selftest(config: Config) -> int:
     """处理 selftest 命令"""
     logger.info("运行自检")
@@ -308,6 +407,17 @@ def handle_selftest(config: Config) -> int:
         print(f"✅ 索引文件可读: {index_file}")
         print(f"✅ 索引条目数: {count}")
 
+        # 数据自证（D4）：manifest 登记的 sha256 ↔ 磁盘实算。
+        # 只校验"登记了的"，缺登记时告警不判失败 —— 缺登记本身是数据缺陷，
+        # 但不该让 selftest 在旧数据树上变红（严格判定在 tools/check_data_integrity.py --strict）。
+        drift = _verify_data_manifests(config.index_path.parent)
+        if drift:
+            for item in drift:
+                logger.error(f"数据字节与 manifest 不一致: {item}")
+            print("❌ 数据自证失败（manifest.sha256 与磁盘不符）")
+            return ExitCode.FAILURE
+        print("✅ 数据自证通过（manifest.sha256 与磁盘一致）")
+
         # 检查引擎模块
         orchestrator = Orchestrator(config)
         print(f"✅ 编排器初始化成功")
@@ -325,12 +435,11 @@ def handle_selftest(config: Config) -> int:
             print(f"⚠️ 模型未启用（骨架生成将使用规则模式）")
 
         # 冻结态：断言数据目录落在产物内（"数据随包走"的产物级核验）
-        # 注意：不用 Path.is_relative_to（3.9+），本项目底线 3.8 —— 用 str 前缀比较
         from .config import is_frozen
         if is_frozen():
-            data_root = str(Path(sys._MEIPASS).resolve())
-            index_str = str(config.index_path.resolve())
-            if index_str == data_root or index_str.startswith(data_root + os.sep):
+            data_root = Path(sys._MEIPASS).resolve()
+            index_path = config.index_path.resolve()
+            if index_path == data_root or index_path.is_relative_to(data_root):
                 print(f"✅ 冻结态数据目录随包: {config.index_path}")
             else:
                 print(f"❌ 冻结态数据目录不在产物内: {config.index_path}")
@@ -343,18 +452,44 @@ def handle_selftest(config: Config) -> int:
 
 
 def handle_export(args, config: Config) -> int:
-    """处理 export 命令"""
+    """处理 export 命令
+
+    D9：旧实现只用 `output_path.parent`，report.py 固定写 report.html/report.json
+    → `-o out/custom.json` 打印"✅ 报告已生成: out\\custom.json"但 custom.json 不存在。
+    现在 `-o` 决定**文件名**（按 --format 只产一份）；不给 `-o` 时仍产 report.<fmt>。
+    """
     logger.info(f"导出: {args.format}")
     try:
-        output_path = args.output or Path(f"report.{args.format}")
+        extension = ".json" if args.format == "json" else ".html"
+        output_path = args.output or Path(f"report{extension}")
+        if output_path.suffix.lower() != extension:
+            # 显式给了 -o 但扩展名与 --format 不符 → 按 --format 纠正并如实提示
+            output_path = output_path.with_suffix(extension)
+
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         orchestrator = Orchestrator(config)
-        report_gen = ReportGenerator()
+        report_config = ReportConfig(
+            human_readable=(args.format == "html"),
+            machine_readable=(args.format == "json"),
+        )
+        report_gen = ReportGenerator(report_config)
 
-        # 使用示例命题生成报告
-        result = orchestrator.run("加法结合律")
-        report_gen.generate(result, output_path.parent)
+        proposition = getattr(args, "proposition", None)
+        if proposition:
+            result = orchestrator.run(proposition)
+        else:
+            print("（未指定 --proposition，使用内置示例命题「加法结合律」）")
+            result = orchestrator.run(EXAMPLE_PROPOSITION)
+
+        # 先生成到临时目录，再改名到 -o 指定的文件名
+        with tempfile.TemporaryDirectory() as tmpdir:
+            generated = report_gen.generate(result, Path(tmpdir))
+            produced = generated.get("html") or generated.get("json")
+            if produced is None:
+                logger.error("报告生成器未产出任何文件")
+                return ExitCode.FAILURE
+            shutil.move(str(produced), str(output_path))
 
         print(f"✅ 报告已生成: {output_path}")
         return ExitCode.SUCCESS

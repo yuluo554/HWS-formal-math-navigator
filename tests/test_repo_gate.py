@@ -6,11 +6,14 @@
   3. README 引用的命令/旗标在 CLI 里真实存在（README 指令面 = 测试面）
   4. 测试套件 import 的第三方库都在 dev extra 里（安装面 = 测试面）
   5. 冻结数据不入包断言：data/raw 不被追踪
+  6. Python floor 五处一致（pyproject / classifiers / CI 矩阵 / README / RELEASE-NOTES）
+  7. 版本号单源（pyproject ↔ __version__）
 """
 
 from __future__ import annotations
 
 import ast
+import re
 import sys
 from pathlib import Path
 
@@ -20,22 +23,18 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO_ROOT / "tools"
 SRC_DIR = REPO_ROOT / "src"
 README = REPO_ROOT / "README.md"
-
-# 冻结名单制：不用 sys.stdlib_module_names（3.10+ 才有，3.8 上是空集 →
-# 会把每个标准库都判成第三方 → 全量假红）
-STDLIB_ALLOWLIST = {
-    "__future__", "argparse", "ast", "collections", "contextlib", "copy",
-    "datetime", "dataclasses", "enum", "functools", "hashlib", "importlib",
-    "io", "itertools", "json", "logging", "math", "os", "pathlib", "platform",
-    "random", "re", "shutil", "string", "subprocess", "sys", "tempfile",
-    "textwrap", "time", "typing", "unittest", "warnings", "zipfile",
-}
+RELEASE_NOTES = REPO_ROOT / "RELEASE-NOTES.md"
+PYPROJECT = REPO_ROOT / "pyproject.toml"
+CI_YML = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 # 本项目自有顶层包（非第三方）
 LOCAL_PACKAGES = {"hws_formal_math", "tools", "_encoding", "benchmark"}
 
 # 测试期依赖白名单（必须在 dev extra 里声明）
 DEV_EXTRAS_REQUIRED = {"pytest"}
+
+# Python floor 单源值（DEC1=B）。改这里之前先读 plan/RELEASE-M8.md 的决策记录。
+PYTHON_FLOOR = "3.12"
 
 
 def _iter_python_files(root: Path):
@@ -148,8 +147,12 @@ class TestInstallSurface:
     """测试面 = 安装面"""
 
     def test_test_imports_are_declared(self):
-        """tests/ 真 import 的第三方库必须在 dev extra 里"""
-        pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        """tests/ 真 import 的第三方库必须在 dev extra 里
+
+        v0.1.2（floor>=3.12）起用 `sys.stdlib_module_names` 判标准库，
+        不再手写 STDLIB_ALLOWLIST（那是 3.8 的绕行：3.8 上该集合为空）。
+        """
+        pyproject = PYPROJECT.read_text(encoding="utf-8")
         dev_section = pyproject.split("dev = [", 1)
         assert len(dev_section) == 2, "pyproject 未声明 dev extra"
         dev_block = dev_section[1].split("]", 1)[0]
@@ -157,7 +160,7 @@ class TestInstallSurface:
         missing = []
         for path in _iter_python_files(REPO_ROOT / "tests"):
             for name in _collect_imports(path):
-                if name in STDLIB_ALLOWLIST or name in LOCAL_PACKAGES:
+                if name in sys.stdlib_module_names or name in LOCAL_PACKAGES:
                     continue
                 if name == "yaml":  # PyYAML，核心依赖
                     continue
@@ -169,9 +172,140 @@ class TestInstallSurface:
         assert not missing, f"测试 import 但未声明依赖: {missing}"
 
 
-class TestFrozenDataGate:
-    """冻结数据纪律"""
+class TestPythonFloorGate:
+    """Python floor 五处一致（DEC1=B：>=3.12）
 
+    这条门是"改 floor 只改一半"的机械拦截：pyproject / classifiers /
+    CI 矩阵 / README / RELEASE-NOTES 必须同一个数字。
+    """
+
+    def test_requires_python_matches_floor(self):
+        assert f'requires-python = ">={PYTHON_FLOOR}"' in PYPROJECT.read_text(encoding="utf-8")
+
+    def test_classifier_matches_floor(self):
+        text = PYPROJECT.read_text(encoding="utf-8")
+        assert f'"Programming Language :: Python :: {PYTHON_FLOOR}"' in text
+
+    def test_no_older_python_classifier(self):
+        """不得残留更老的 classifier（改了 floor 却忘删 3.8 的典型形态）"""
+        text = PYPROJECT.read_text(encoding="utf-8")
+        found = re.findall(r'"Programming Language :: Python :: (\d+\.\d+)"', text)
+        assert found, "一个 Python 版本的 classifier 都没有"
+        older = [v for v in found if tuple(map(int, v.split("."))) < tuple(map(int, PYTHON_FLOOR.split(".")))]
+        assert not older, f"残留更老的 classifier: {older}"
+
+    def test_ci_matrix_matches_floor(self):
+        ci = CI_YML.read_text(encoding="utf-8")
+        assert f'"{PYTHON_FLOOR}"' in ci, f"CI 矩阵未使用 {PYTHON_FLOOR}"
+        assert '"3.8"' not in ci, "CI 矩阵仍含已 EOL 的 3.8"
+
+    def test_ci_floor_job_actually_runs(self):
+        """CI 必须**真的跑** floor 版本（不只是出现在字符串里）"""
+        ci = CI_YML.read_text(encoding="utf-8")
+        block = ci.split("matrix:", 1)[1].split("steps:", 1)[0]
+        assert "python-version" in block, "test job 的矩阵里没有 python-version"
+        assert PYTHON_FLOOR in block
+
+    def test_readme_states_floor(self):
+        readme = README.read_text(encoding="utf-8")
+        assert PYTHON_FLOOR in readme, f"README 未写 Python {PYTHON_FLOOR}"
+        assert "Python 3.8" not in readme, "README 仍写 Python 3.8"
+
+    def test_release_notes_state_floor(self):
+        notes = RELEASE_NOTES.read_text(encoding="utf-8")
+        assert "Python 3.8" not in notes, "RELEASE-NOTES 仍写 Python 3.8"
+
+    def test_setuptools_floor_allows_pep639(self):
+        """SPDX license 表达式要求 setuptools>=77（与 3.8 不可兼得）"""
+        text = PYPROJECT.read_text(encoding="utf-8")
+        assert 'setuptools>=77' in text, "build-system 未抬到 setuptools>=77"
+        assert re.search(r'^license\s*=\s*"', text, re.MULTILINE), "license 未转 SPDX 表达式"
+        assert "license = {text" not in text, "license 仍是旧 table 形态"
+
+    def test_no_python38_workarounds_left(self):
+        """3.8 绕行代码必须清掉（is_relative_to 现在可用）"""
+        cli = (SRC_DIR / "hws_formal_math" / "cli.py").read_text(encoding="utf-8")
+        build_index = (TOOLS_DIR / "build_index.py").read_text(encoding="utf-8")
+        assert "is_relative_to" in cli, "cli.py 仍在用 str 前缀比较"
+        assert "is_relative_to" in build_index, "build_index.py 仍在用 str 前缀比较"
+
+    def test_stdlib_gate_uses_runtime_truth(self):
+        """标准库判定必须来自 `sys.stdlib_module_names`，不得是手写名单
+
+        只查"代码里有没有手写集合"：写一个**名字匹配自身**的字面量断言
+        （如 `assert "STDLIB_ALLOWLIST" not in source`）会被它自己的注释绊红，
+        这是「字面 grep 门」的经典失效形态。判据改成 AST：文件里不得存在
+        名为 STDLIB_ALLOWLIST 的**赋值**。
+        """
+        tree = ast.parse((REPO_ROOT / "tests" / "test_repo_gate.py").read_text(encoding="utf-8"))
+        assigned = {
+            target.id
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.Assign, ast.AnnAssign))
+            for target in (node.targets if isinstance(node, ast.Assign) else [node.target])
+            if isinstance(target, ast.Name)
+        }
+        assert "STDLIB_ALLOWLIST" not in assigned, "守门仍在用手写标准库白名单（3.8 绕行）"
+        # 反向锚：必须真的用了运行时真值
+        source = (REPO_ROOT / "tests" / "test_repo_gate.py").read_text(encoding="utf-8")
+        assert "sys.stdlib_module_names" in source, "未使用 sys.stdlib_module_names 判标准库"
+
+
+class TestVersionSingleSource:
+    """版本号单源（D11）"""
+
+    def test_version_matches_pyproject(self):
+        from hws_formal_math import __version__
+
+        match = re.search(r'^version\s*=\s*"([^"]+)"', PYPROJECT.read_text(encoding="utf-8"), re.MULTILINE)
+        assert match, "pyproject.toml 没有 version"
+        assert __version__ == match.group(1), (
+            f"版本双源不一致：__version__={__version__} vs pyproject={match.group(1)}"
+        )
+
+    def test_version_has_no_hardcoded_duplicate(self):
+        """__init__.py 不得再写死一个与 pyproject 无关的版本字符串
+
+        允许有一个**兜底常量**（源码态读不到 pyproject 时用），
+        但它必须与 pyproject 同值 —— 上面那条已覆盖。
+        """
+        init_source = (SRC_DIR / "hws_formal_math" / "__init__.py").read_text(encoding="utf-8")
+        assert "importlib.metadata" in init_source, "未从安装元数据读版本"
+
+    def test_cli_version_flag_works(self):
+        """D7c：--version 必须可用且打印版本（此前 exit 2）"""
+        from hws_formal_math import __version__
+        from hws_formal_math.cli import main
+
+        with pytest.raises(SystemExit) as exc:
+            main(["--version"])
+        assert exc.value.code == 0
+        assert __version__
+
+
+class TestFrozenDataGate:
+    """冻结数据纪律
+
+    其中两条门依赖 `git`（check-attr / ls-files）。**sdist 里没有 .git**，
+    所以那里必须显式 `skip` 而不是变成假红或假绿：
+      - 真红会让"发布物自带测试"永远失败（源码包不是缺陷）
+      - 假绿更糟：`git ls-files` 在无 .git 时 stdout 为空，会被当成"没被追踪"
+    在仓库与 CI 里 `.git` 一定存在，故这两条门实跑（见
+    `test_git_attr_gates_are_active_in_repo` 的反向锚）。
+    """
+
+    HAS_GIT = (REPO_ROOT / ".git").exists()
+    requires_git = pytest.mark.skipif(
+        not HAS_GIT, reason="源码包（无 .git）内无法执行 git 判据；仓库/CI 内实跑"
+    )
+
+    def test_git_attr_gates_are_active_in_repo(self):
+        """反向锚：仓库态必须有 .git，否则上面两条门会被永久 skip（假门）"""
+        if (REPO_ROOT / "pyproject.toml").is_file() and (REPO_ROOT / "PKG-INFO").is_file():
+            pytest.skip("源码包形态（有 PKG-INFO 无 .git），git 门按设计 skip")
+        assert self.HAS_GIT, "仓库内没有 .git —— git 类守门会全部被 skip"
+
+    @requires_git
     def test_raw_data_not_tracked(self):
         """data/raw 不入仓（K7：不存 mathlib4 源码）"""
         import subprocess
@@ -179,6 +313,7 @@ class TestFrozenDataGate:
             ["git", "ls-files", "data/raw"],
             cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
         )
+        assert result.returncode == 0, result.stderr
         assert result.stdout.strip() == "", f"data/raw 被追踪: {result.stdout}"
 
     def test_snapshot_manifest_not_placeholder(self):
@@ -187,6 +322,83 @@ class TestFrozenDataGate:
         manifest = json.loads((REPO_ROOT / "data" / "snapshots" / "manifest.json").read_text(encoding="utf-8"))
         assert manifest.get("sha256") != "placeholder", "快照 manifest 仍是 placeholder"
         assert manifest.get("case_count", 0) > 0, "快照 case_count 为 0"
+
+    def test_all_data_manifests_register_sha256(self):
+        """D4：每个承载数据的 manifest 都必须登记 sha256（缺登记 = 漂移无人发现）"""
+        import json
+        manifests = [
+            "data/index/manifest.json",
+            "data/snapshots/manifest.json",
+            "data/snapshots/v1/manifest.json",
+            "data/proposals/v1/manifest.json",
+        ]
+        missing = []
+        for rel in manifests:
+            data = json.loads((REPO_ROOT / rel).read_text(encoding="utf-8"))
+            if not data.get("sha256"):
+                missing.append(rel)
+        assert not missing, f"manifest 未登记 sha256: {missing}"
+
+    def test_data_integrity_gate_passes(self):
+        """数据自证门在仓库当前状态必须通过（篡改时由负控测试覆盖）"""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "check_data_integrity", str(TOOLS_DIR / "check_data_integrity.py")
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        assert module.check(REPO_ROOT / "data", strict=True) == 0
+
+    def test_data_integrity_gate_detects_tampering(self, tmp_path):
+        """负控：把 snapshots.json 追加 1 字节 → 门必须非 0"""
+        import importlib.util
+        import shutil
+
+        spec = importlib.util.spec_from_file_location(
+            "check_data_integrity_neg", str(TOOLS_DIR / "check_data_integrity.py")
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        data_copy = tmp_path / "data"
+        shutil.copytree(REPO_ROOT / "data", data_copy,
+                        ignore=shutil.ignore_patterns("raw"))
+        target = data_copy / "snapshots" / "v1" / "snapshots.json"
+        target.write_bytes(target.read_bytes() + b" ")
+
+        assert module.check(data_copy, strict=True) != 0
+
+    @requires_git
+    def test_gitattributes_freezes_nested_data(self):
+        """D4：二级路径也必须 text: unset（`*` 不匹配子目录）
+
+        这是"验证命令本身"，必须真问 git —— 只读 .gitattributes 文本会漏掉
+        "规则写了但不匹配"的形态。
+        """
+        import subprocess
+
+        paths = [
+            "data/index/theorems.jsonl",
+            "data/snapshots/manifest.json",
+            "data/snapshots/v1/snapshots.json",
+            "data/snapshots/v1/manifest.json",
+            "data/proposals/v1/proposals.json",
+            "data/proposals/v1/manifest.json",
+        ]
+        result = subprocess.run(
+            ["git", "check-attr", "-a", *paths],
+            cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
+        )
+        assert result.returncode == 0, result.stderr
+
+        by_path = {}
+        for line in result.stdout.strip().splitlines():
+            path, attr, value = (part.strip() for part in line.split(":", 2))
+            by_path.setdefault(path, {})[attr] = value
+
+        not_frozen = [p for p in paths if by_path.get(p, {}).get("text") != "unset"]
+        assert not not_frozen, f"以下数据文件未被 -text 冻结（EOL 会漂移）: {not_frozen}"
 
 
 class TestReleasePackagingGate:

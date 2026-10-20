@@ -5,6 +5,7 @@
 遵循 K4（同输入同结果）口径：固定 seed，确定性输出。
 """
 
+import hashlib
 import json
 import random
 from pathlib import Path
@@ -18,6 +19,68 @@ SEED = 42
 GENERATION_DATE = "2026-01-01"
 
 
+def _sha256_of(data: bytes) -> str:
+    """字节级 sha256（D4：manifest 必须登记，否则 EOL 漂移无人发现）"""
+    return hashlib.sha256(data).hexdigest()
+
+
+def _serialize_proposals(proposals: List[Dict[str, Any]]) -> bytes:
+    """确定性序列化提案集（与历史产物逐字节一致：indent=2 + 末尾无换行 + LF）
+
+    显式 `newline="\\n"`：本机 core.autocrlf=true 时文本模式写盘会写 CRLF，
+    与仓库里的 LF 版本字节不同（D4 实测 11,270 → 11,776 B）。
+    """
+    payload = json.dumps(proposals, indent=2, ensure_ascii=False)
+    return payload.encode("utf-8")
+
+
+def _build_proposals(num_cases: int) -> tuple:
+    """按固定 seed 生成命题集（**纯函数，不写盘**）
+
+    拆出来是为了让 `--check` 只读：D5 实测过同类缺陷（先写盘再比对 =
+    验证命令把被验证的证据"治好"，篡改痕迹消失）。
+    """
+    random.seed(SEED)
+
+    proposals = []
+
+    # 按难度分布：简单 40%，中等 40%，困难 20%
+    easy_count = int(num_cases * 0.4)
+    medium_count = int(num_cases * 0.4)
+    hard_count = num_cases - easy_count - medium_count
+
+    for i in range(easy_count):
+        proposals.append(generate_easy_proposition(i))
+
+    for i in range(medium_count):
+        proposals.append(generate_medium_proposition(easy_count + i))
+
+    for i in range(hard_count):
+        proposals.append(generate_hard_proposition(easy_count + medium_count + i))
+
+    # 按 ID 排序（K4 确定性）
+    proposals.sort(key=lambda p: p["id"])
+    return proposals, easy_count, medium_count, hard_count
+
+
+def _build_manifest(proposals, easy_count, medium_count, hard_count, proposals_bytes) -> Dict[str, Any]:
+    """构造 manifest（含 sha256；纯函数，不写盘）"""
+    return {
+        "version": "1.0",
+        "seed": SEED,
+        "generation_date": GENERATION_DATE,
+        "proposal_count": len(proposals),
+        "difficulty_distribution": {
+            "easy": easy_count,
+            "medium": medium_count,
+            "hard": hard_count
+        },
+        "domains": sorted(list(set(p["domain"] for p in proposals))),
+        # D4：以前 proposals 的 manifest 没有 sha256 字段，所以 CRLF 漂移无人发现
+        "sha256": _sha256_of(proposals_bytes),
+    }
+
+
 def generate_proposals(output_path: Path, num_cases: int = 50) -> Dict[str, Any]:
     """
     生成合成命题集
@@ -29,60 +92,23 @@ def generate_proposals(output_path: Path, num_cases: int = 50) -> Dict[str, Any]
     Returns:
         命题 manifest
     """
-    random.seed(SEED)
-    
-    # 确保输出目录存在
     output_path.mkdir(parents=True, exist_ok=True)
-    
-    # 生成命题
-    proposals = []
-    
-    # 按难度分布：简单 40%，中等 40%，困难 20%
-    easy_count = int(num_cases * 0.4)
-    medium_count = int(num_cases * 0.4)
-    hard_count = num_cases - easy_count - medium_count
-    
-    # 生成简单命题
-    for i in range(easy_count):
-        proposal = generate_easy_proposition(i)
-        proposals.append(proposal)
-    
-    # 生成中等命题
-    for i in range(medium_count):
-        proposal = generate_medium_proposition(easy_count + i)
-        proposals.append(proposal)
-    
-    # 生成困难命题
-    for i in range(hard_count):
-        proposal = generate_hard_proposition(easy_count + medium_count + i)
-        proposals.append(proposal)
-    
-    # 按 ID 排序（K4 确定性）
-    proposals.sort(key=lambda p: p["id"])
-    
-    # 写入命题文件
+
+    proposals, easy_count, medium_count, hard_count = _build_proposals(num_cases)
+
+    # 写入命题文件（确定性字节：LF，不受 core.autocrlf 影响）
     proposals_file = output_path / "proposals.json"
-    with open(proposals_file, 'w', encoding='utf-8') as f:
-        json.dump(proposals, f, indent=2, ensure_ascii=False)
-    
-    # 生成 manifest
-    manifest = {
-        "version": "1.0",
-        "seed": SEED,
-        "generation_date": GENERATION_DATE,
-        "proposal_count": len(proposals),
-        "difficulty_distribution": {
-            "easy": easy_count,
-            "medium": medium_count,
-            "hard": hard_count
-        },
-        "domains": sorted(list(set(p["domain"] for p in proposals)))
-    }
-    
+    proposals_bytes = _serialize_proposals(proposals)
+    proposals_file.write_bytes(proposals_bytes)
+
+    manifest = _build_manifest(
+        proposals, easy_count, medium_count, hard_count, proposals_bytes
+    )
+
     manifest_file = output_path / "manifest.json"
-    with open(manifest_file, 'w', encoding='utf-8') as f:
+    with open(manifest_file, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    
+
     return manifest
 
 
@@ -389,40 +415,29 @@ if __name__ == "__main__":
     )
     
     args = parser.parse_args()
-    
+
     if args.check:
-        # 验证模式：重新生成并比对
-        if not (args.output / "proposals.json").exists():
+        # 只读校验（D5 同类缺陷：以前这里先生成写盘再比对，篡改痕迹会被"治好"）
+        existing_file = args.output / "proposals.json"
+        if not existing_file.exists():
             print("错误：--check 模式需要已存在的 proposals.json")
             exit(1)
-        
-        # 读取现有产物
-        with open(args.output / "proposals.json", 'r', encoding='utf-8') as f:
-            existing_proposals = json.load(f)
-        
-        # 重新生成
-        new_manifest = generate_proposals(args.output, args.num_cases)
-        
-        # 读取新生成的产物
-        with open(args.output / "proposals.json", 'r', encoding='utf-8') as f:
-            new_proposals = json.load(f)
-        
-        # 比对（排除 generated_at 字段）
-        existing_clean = [
-            {k: v for k, v in p.items() if k != "generated_at"}
-            for p in existing_proposals
-        ]
-        new_clean = [
-            {k: v for k, v in p.items() if k != "generated_at"}
-            for p in new_proposals
-        ]
-        
-        if existing_clean == new_clean:
+
+        proposals, easy_count, medium_count, hard_count = _build_proposals(args.num_cases)
+        expected_bytes = _serialize_proposals(proposals)
+        existing_bytes = existing_file.read_bytes()
+
+        if existing_bytes == expected_bytes:
+            expected_manifest = _build_manifest(
+                proposals, easy_count, medium_count, hard_count, expected_bytes
+            )
             print("✅ 位级一致验证通过")
+            print(f"sha256: {expected_manifest['sha256']}")
             exit(0)
-        else:
-            print("❌ 位级不一致！")
-            exit(1)
+
+        print("❌ 位级不一致！（磁盘未被修改）")
+        print(f"  现有 {len(existing_bytes)} 字节 / 期望 {len(expected_bytes)} 字节")
+        exit(1)
     else:
         manifest = generate_proposals(args.output, args.num_cases)
         

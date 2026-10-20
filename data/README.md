@@ -1,6 +1,6 @@
 # data/README.md — 依据查证与数据纪律
 
-仓库 `HWS-formal-math-navigator`（形式化数学库导航与证明骨架生成器）。基准日：**2026-10-15**。
+仓库 `HWS-formal-math-navigator`（形式化数学库导航与证明骨架生成器）。基准日：**2026-10-15**（最近复核：**2026-10-21**，见 §三点五）。
 
 ## 一、依据查证记录（三态）
 
@@ -42,7 +42,17 @@
    - 假 DOI 前缀：`10.9999/`；假 arXiv 号段：`9999.99999`
    - 假作者：`A. Example` / `Test Author`；假机构：`Example University` / `样例大学`
 5. **预置模型输出快照**：含模型名、版本、生成参数、原始输出（含 `<think>` 段）、sha256；随仓只存快照。
-6. **只增不改**：`data/index/**` 与 `data/snapshots/**` 入仓后标 `.gitattributes` `-text` 防 EOL 改写字节。
+6. **只增不改**：`data/**`（含二级目录）入仓后标 `.gitattributes` `-text` 防 EOL 改写字节；
+   每个 `manifest.json` 登记对应数据文件的 `sha256`，由 `selftest` 与
+   `tools/check_data_integrity.py --strict` 双处对撞（v0.1.2 起生效）。
+
+## 三点五、复核记录
+
+| 日期 | 复核项 | 结论 |
+|---|---|---|
+| 2026-10-21 | 数据字节冻结（`.gitattributes` 二级路径） | 原规则 `data/snapshots/*.json` 不匹配 `v1/*.json`，已发生 3 处 CRLF 漂移；改 `data/**` 并补 `sha256` 登记与自证门 |
+| 2026-10-21 | `proposals/v1/manifest.json` 的 sha256 | 补登（此前无该字段，故 CRLF 漂移无人发现） |
+
 
 ## 四、编码纪律
 

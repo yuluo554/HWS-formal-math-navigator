@@ -1,14 +1,17 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+# setuptools>=77 才有 PEP 639（SPDX license 表达式 + license-files）
+# 与 Python 3.8 不可兼得 —— 故 requires-python 同步抬到 3.12（DEC1=B）
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hws-formal-math-navigator"
-version = "0.1.1"
+version = "0.1.2"
 description = "形式化数学库导航与证明骨架生成器"
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "MIT"}
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
     {name = "HWS", email = "example@example.com"}
 ]
@@ -18,24 +21,25 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Mathematics",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.12",
 ]
+# jinja2 已移除：全仓 0 处 import，属未使用依赖（DEC5=A）
 dependencies = [
     "PyYAML>=5.1",
-    "jinja2>=3.0",
 ]
 
 [project.optional-dependencies]
 vector = ["numpy>=1.20", "scikit-learn>=1.0"]
-gui = ["PySide6>=6.0"]
+gui = ["PySide6>=6.6"]
 # dev = 跑测试所需（含测试期依赖，如 PyYAML 供 workflow 守门解析）
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "PyYAML>=5.1"]
-build = ["build>=0.10", "pyinstaller>=6.0"]
+build = ["build>=1.0", "pyinstaller>=6.0"]
 all = ["hws-formal-math-navigator[vector,gui]"]
 
 [project.scripts]
 hws-formal-math = "hws_formal_math.cli:main"
+# D7b：README 一直写 `hws-formal-math-viewer --selftest`，此前只注册了 CLI
+hws-formal-math-viewer = "hws_formal_math.viewer.main:main"
 
 [project.urls]
 Homepage = "https://github.com/yuluo554/HWS-formal-math-navigator"
@@ -44,6 +48,22 @@ Issues = "https://github.com/yuluo554/HWS-formal-math-navigator/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# 随包数据（DEC2=A：数据仍留在仓库根 data/，不搬进 src/）
+#
+# 为什么用 data-files 而不是 package-data：package-data 只收**包目录内**的文件，
+# 而本仓数据在仓库根（tools/*.spec 的 DATAS 与冻结态自检都依赖该布局）。
+# data-files 装到 <prefix>/share/hws-formal-math/{data,fixtures}，
+# 由 config.default_data_dir() 在"装态"回落查找。
+# 基准用例 tests/fixtures 也必须随包 —— 否则 pip 装完 `bench --suite retrieval`
+# 找不到用例（D1 实测 exit 2）。
+[tool.setuptools.data-files]
+"share/hws-formal-math/data" = ["data/*.md"]
+"share/hws-formal-math/data/index" = ["data/index/*.json", "data/index/*.jsonl"]
+"share/hws-formal-math/data/snapshots" = ["data/snapshots/*.json"]
+"share/hws-formal-math/data/snapshots/v1" = ["data/snapshots/v1/*.json"]
+"share/hws-formal-math/data/proposals/v1" = ["data/proposals/v1/*.json"]
+"share/hws-formal-math/fixtures" = ["tests/fixtures/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

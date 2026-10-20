@@ -49,6 +49,46 @@ def _sha256_of(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _build_snapshot_bytes(cases: List[Dict[str, Any]]) -> tuple:
+    """构造快照字节与 manifest（**纯函数，不写盘**）
+
+    拆出来是为了让 `--check` 真只读：D5 实测 --check 曾先 `generate_snapshots()`
+    真写盘再比对 → 验证命令把被验证的证据"治好"，篡改痕迹消失。
+    """
+    entries: List[Dict[str, Any]] = []
+    for case in sorted(cases, key=lambda c: c.get("id", "")):
+        entries.append({
+            "id": case["id"],
+            "domain": case.get("domain", "other"),
+            "difficulty": case.get("difficulty", "medium"),
+            "proposition": case["proposition"],
+            "code": _formalize(case["id"], case["proposition"]),
+        })
+
+    # 确定性序列化：sort_keys + 固定缩进 + LF
+    payload = json.dumps(entries, ensure_ascii=False, indent=2, sort_keys=True)
+    snapshot_bytes = (payload + "\n").encode("utf-8")
+
+    manifest = {
+        "version": SNAPSHOT_VERSION,
+        "generation_date": GENERATION_DATE,
+        "generation_config": model_config_default(),
+        "case_count": len(entries),
+        "domains": sorted({e["domain"] for e in entries}),
+        "sha256": _sha256_of(snapshot_bytes),
+    }
+    return snapshot_bytes, manifest
+
+
+def model_config_default() -> Dict[str, Any]:
+    """默认生成参数（规则模式，未启用模型）"""
+    return {
+        "mode": "rule_based",
+        "model": None,
+        "note": "模型未启用，骨架按确定性规则生成（证明体为 by sorry 占位）",
+    }
+
+
 def generate_snapshots(
     output_path: Path,
     cases: List[Dict[str, Any]],
@@ -66,38 +106,13 @@ def generate_snapshots(
     """
     output_path.mkdir(parents=True, exist_ok=True)
 
-    generation_config = model_config or {
-        "mode": "rule_based",
-        "model": None,
-        "note": "模型未启用，骨架按确定性规则生成（证明体为 by sorry 占位）",
-    }
-
-    entries: List[Dict[str, Any]] = []
-    for case in sorted(cases, key=lambda c: c.get("id", "")):
-        entries.append({
-            "id": case["id"],
-            "domain": case.get("domain", "other"),
-            "difficulty": case.get("difficulty", "medium"),
-            "proposition": case["proposition"],
-            "code": _formalize(case["id"], case["proposition"]),
-        })
-
-    # 确定性序列化：sort_keys + 固定缩进 + LF
-    payload = json.dumps(entries, ensure_ascii=False, indent=2, sort_keys=True)
-    snapshot_bytes = (payload + "\n").encode("utf-8")
+    snapshot_bytes, manifest = _build_snapshot_bytes(cases)
+    if model_config is not None:
+        manifest["generation_config"] = model_config
 
     snapshot_file = output_path / "snapshots.json"
     with open(snapshot_file, "wb") as f:
         f.write(snapshot_bytes)
-
-    manifest = {
-        "version": SNAPSHOT_VERSION,
-        "generation_date": GENERATION_DATE,
-        "generation_config": generation_config,
-        "case_count": len(entries),
-        "domains": sorted({e["domain"] for e in entries}),
-        "sha256": _sha256_of(snapshot_bytes),
-    }
 
     manifest_payload = json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True)
     with open(output_path / "manifest.json", "wb") as f:
@@ -141,20 +156,23 @@ def main() -> int:
         cases = json.load(f)
 
     if args.check:
+        # **只读**：只算不写（D5：以前这里先写盘再比对，篡改痕迹被抹掉）
         snapshot_file = args.output / "snapshots.json"
         if not snapshot_file.exists():
             print("错误：--check 模式需要已存在的 snapshots.json")
             return 1
 
         before = snapshot_file.read_bytes()
-        manifest = generate_snapshots(args.output, cases)
-        after = snapshot_file.read_bytes()
+        expected_bytes, manifest = _build_snapshot_bytes(cases)
 
-        if before == after:
+        if before == expected_bytes:
             print("✅ 位级一致验证通过")
             print(f"sha256: {manifest['sha256']}")
             return 0
-        print("❌ 位级不一致！")
+        print("❌ 位级不一致！（磁盘未被修改）")
+        print(f"  现有 {len(before)} 字节 / 期望 {len(expected_bytes)} 字节")
+        print(f"  现有 sha256: {_sha256_of(before)}")
+        print(f"  期望 sha256: {manifest['sha256']}")
         return 1
 
     manifest = generate_snapshots(args.output, cases)

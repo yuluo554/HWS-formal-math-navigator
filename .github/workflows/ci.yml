@@ -1,5 +1,11 @@
 # CI 工作流
-# 测试（四矩阵）+ 三平台构建（原生冒烟）+ tag 推送时发布
+# 测试（4 job：两平台 × floor/最新）+ 三平台构建（原生冒烟）+ tag 推送时发布
+#
+# v0.1.2（DEC1=B）：Python floor 3.8 → 3.12，矩阵随之收敛为
+#   {ubuntu-latest, windows-latest} × {3.12, 3.13}
+# —— 3.12 既是最低支持版本又是本机实测版本（"CI 绿证据"与"本机实测"同一口径），
+#    3.13 腿守"更高版本不回归"。3.8 已于 2024-10 结束支持，且与
+#    setuptools>=77（PEP 639 SPDX license）不可兼得。
 #
 # 关键约束：
 #   ① **PyInstaller 不能交叉编译** —— Linux/macOS 产物只能在对应 runner 上构建；
@@ -25,14 +31,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.8", "3.12"]
+        python-version: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # 历史扫描类守门需要完整历史
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -52,6 +58,10 @@ jobs:
 
       - name: Run coverage
         run: pytest tests/ --cov=src/hws_formal_math --cov-report=xml
+
+      # 数据自证门（D4）：manifest.sha256 ↔ 磁盘实算；--strict 让"缺登记"也算失败
+      - name: Data integrity (manifest sha256 ↔ disk)
+        run: python tools/check_data_integrity.py --strict
 
       # 安装面第四面：裸 console-script 与 python -m 是两条通路
       # （sys.path 来源不同），只跑一种会漏掉"我们的包没进安装面"这类缺陷
@@ -102,10 +112,10 @@ jobs:
             suffix_glob: "macos-*"
             extra: "false"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -193,7 +203,7 @@ jobs:
           echo "OK: 打包确定性通过（两次独立打包逐字节一致）"
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ matrix.os }}
           path: release/*
@@ -207,10 +217,10 @@ jobs:
     permissions:
       contents: write    # 创建 Release 需要
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download all platform artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: release-assets-*
           merge-multiple: true

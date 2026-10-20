@@ -1,0 +1,23 @@
+# MANIFEST.in —— sdist 自足（D1：sdist 里此前后零 data/、零 fixtures、零 tools/）
+
+# 随包数据（与 [tool.setuptools.data-files] 的 data 部分对应）
+recursive-include data *.md *.json *.jsonl
+prune data/raw
+
+# 基准用例 + 测试夹具：sdist 里 `pytest tests/` 必须能跑（否则 2 个 collection error）
+recursive-include tests *.py *.json
+prune tests/__pycache__
+
+# tools/ 是 tests 的 import 依赖（tests/test_build_index.py 等 import tools.*），
+# 也是 README「全量索引需自建」一节的入口
+recursive-include tools *.py *.spec
+prune tools/__pycache__
+
+# 构建/发布所需文档
+include LICENSE
+include RELEASE-NOTES.md
+recursive-include plan *.md
+recursive-include docs *.md
+recursive-include .github/workflows *.yml
+
+global-exclude *.py[cod] __pycache__ *.log

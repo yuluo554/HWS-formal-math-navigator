@@ -1,12 +1,17 @@
 # .gitattributes
 
-# 文本归一
+# 文本归一（默认）
 * text=auto eol=lf
 
-# 快照冻结（防 EOL 改写字节）
-data/index/*.jsonl -text
-data/snapshots/*.json -text
-data/proposals/*.json -text
+# 冻结数据（防 EOL 改写字节）
+#
+# D4：旧规则写的是 data/snapshots/*.json —— `*` **不匹配**二级目录，
+# 于是 data/snapshots/v1/snapshots.json、data/proposals/v1/proposals.json
+# 一直是 text: auto（工作树 CRLF / clone LF → 同一文件两处字节不同）。
+# 用 `**` 覆盖全部层级；改完必须用 `git check-attr -a <二级路径>` 逐个回验。
+data/**/*.json -text
+data/**/*.jsonl -text
+data/**/*.md -text
 
 # 二进制文件
 *.pdf binary

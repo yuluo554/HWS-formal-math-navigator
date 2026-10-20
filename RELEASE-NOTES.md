@@ -1,10 +1,20 @@
-# HWS-formal-math-navigator v0.1.1
+# HWS-formal-math-navigator v0.1.2
 
-> **v0.1.1 变更（2026-10-18）**：回访修复三项"承诺未兑现"——
-> ① 桌面查看器**真实现并随包分发**（检索/依赖图/导出接线 + 零 Qt 自检 + 双 exe 打包）；
-> ② 索引溯源**诚实化**（随包 35 条为 `curated-sample` 样例，拒绝 `unknown` commit）；
-> ③ **技术报告与演示 GIF 落仓并进附件**。测试 198 → 212 全绿。
-
+> **v0.1.2 变更（2026-10-21）**：按二次迭代诊断（`update/`）修三洞 + 补数据自证——
+> ① **pip 渠道装完能用**：`data/` 与基准用例此前**一个都没进 wheel/sdist**，
+>    `pip install` 后 `selftest`/`search`/`export`/`bench` 全部失败；现在装到
+>    `<prefix>/share/hws-formal-math/` 并由 `default_data_dir()` 在装态回落查找；
+> ② **内核验证真能跑**：此前调 `lean --check`，而该选项**在 Lean 4 里不存在**
+>    （上游 `shell.cpp` 无此项）→ 正确证明也判 FAIL；改为 `lean <file>` 以退出码为判据；
+> ③ **发布形态门禁不再假通过**：`assert_release_shape.py` 用子串判 CLI，
+>    而 CLI 名是查看器名的前缀 → 只含查看器的 zip 曾被判"含 CLI + 查看器"；
+>    改为 basename 精确比较并补两条负控；
+> ④ **冻结数据字节自证**：`.gitattributes` 原规则 `*` 不匹配二级目录，
+>    `data/snapshots/v1/snapshots.json` 等三个文件已发生 CRLF/LF 漂移且无人发现；
+>    改用 `data/**`，并新增 `tools/check_data_integrity.py` + `selftest` 双处核验。
+>
+> **不兼容变更**：Python floor `>=3.8` → **`>=3.12`**（3.8 已 EOL，且与
+> `setuptools>=77` 的 PEP 639 SPDX license 不可兼得）；移除未使用依赖 `jinja2`。
 
 形式化数学库导航与证明骨架生成器 —— 让"生成的证明"从"读着像对"变成**可判定的对象**。
 
@@ -15,7 +25,7 @@
 | **Windows x64** | `hws-formal-math-<tag>-win64.zip` | 解压后运行 `hws-formal-math.exe` |
 | **Linux x86_64** | `hws-formal-math-<tag>-linux-x86_64.zip` | `chmod +x` 后运行 `hws-formal-math`（zip 已保留可执行位，通常无需手动 chmod） |
 | **macOS** | `hws-formal-math-<tag>-macos-*.zip` | 解压后运行 `hws-formal-math`；首次运行可能需在「隐私与安全性」放行 |
-| 源码安装 | `hws_formal_math_navigator-*.tar.gz` / `*.whl` | `pip install`（需 Python 3.8+） |
+| 源码安装 | `hws_formal_math_navigator-*.tar.gz` / `*.whl` | `pip install`（需 Python 3.12+） |
 
 **onedir 形态**：可执行文件与 `_internal/` 目录必须**同目录**（索引等数据随包分发在 `_internal/data/`）。单独拷贝可执行文件会因缺数据而自检失败。
 
@@ -47,18 +57,21 @@ certutil -hashfile hws-formal-math-<tag>-win64.zip SHA256
 
 ## 前置条件
 
-- **Python 3.8+**（源码安装时；冻结产物免安装）
+- **Python 3.12+**（源码安装时；冻结产物免安装）
 - **Lean 4 + elan**（内核验证需要，**用户自备**）——未安装时检索与依赖图**降级可用**，内核验证如实标注"未执行"
-- **模型端点**（骨架生成需要，可选；OpenAI 兼容端点 / llama.cpp server）
+- **模型端点**（骨架生成需要，可选；OpenAI 兼容端点 / llama.cpp server）——
+  ⚠️ **三条端点目前均未实现**（调用抛 `NotImplementedError`，`generate` 以 exit 1 如实失败）
 
 ## 验证与质量
 
-- **CI 四矩阵**：ubuntu-latest / windows-latest × Python 3.8 / 3.12
+- **CI 矩阵**：ubuntu-latest / windows-latest × Python 3.12 / 3.13
 - **三平台原生构建 + 原生冒烟**：Linux / Windows / macOS 各自在原生 runner 上构建并真实运行冻结产物
-- **185 tests passed**（双解释器）
-- **确定性**：检索/依赖图同输入同结果；报告 JSON 逐字节可复现；生成器支持 `--check` 位级一致
+- **227 tests passed**（本地 Python 3.12 实测）
+- **数据自证**：`manifest.json` 的 `sha256` 与磁盘实算对撞（`selftest` + `tools/check_data_integrity.py --strict`）
+- **确定性**：检索/依赖图同输入同结果；报告 JSON 逐字节可复现；生成器支持 `--check` 位级一致（只读）
 - **打包确定性**：同 dist 树两次独立打包逐字节一致（`ZIP_STORED` + 条目排序 + 固定时间戳）
-- **判定不虚高**：`skeleton` 基准在无 Lean 内核时报告 `not_enabled` 而非冒充通过
+- **判定不虚高**：`skeleton` 基准在无 Lean 内核时报告 `not_enabled` 而非冒充通过；
+  领域覆盖度不足时如实打印（不接进 `all_passed`，也不静默降级）
 
 ## 免责声明
 

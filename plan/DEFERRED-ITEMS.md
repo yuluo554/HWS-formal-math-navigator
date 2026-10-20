@@ -15,9 +15,9 @@
 
 | 编号 | 待议项 | 来源 | 处置 | 理由/证据 |
 |------|--------|------|------|-----------|
-| D4 | GUI 桌面查看器（PySide6） | M4 设计 | ⬜ 跳过 | 首期聚焦 CLI；GUI 列扩展项；pyproject.toml 已声明 gui extra 但 CI 不跑 |
+| D4 | GUI 桌面查看器（PySide6） | M4 设计 | ✅ **完成**（M7 收尾） | 查看器真实现并随包分发（双 exe）；窗口模式需 PySide6，`--selftest` 零 Qt 可跑 |
 | D5 | 向量化检索（numpy + scikit-learn） | M3 设计 | ⬜ 跳过 | BM25 已满足首期需求；vector extra 已声明但 CI 不跑 |
-| D6 | 模型端点接入（OpenAI / llama.cpp） | M4 设计 | ⬜ 跳过 | 模型在环但默认关闭；首期不强制；config.yaml 已含配置模板 |
+| D6 | 模型端点接入（OpenAI / llama.cpp） | M4 设计 | ⬜ 跳过（v0.1.2 已在 README 正面披露） | 模型在环但默认关闭；三条端点 `_call_openai_endpoint` / `_call_llama_cpp` / `_call_omni_infer` **仍全为 NotImplementedError**；v0.1.2 只补披露不实现（见 plan/RELEASE-M8.md §二） |
 | D7 | mathlib4 全量源码入仓 | M1 数据计划 | ⬜ 跳过 | 数 GB 体积，不适合入仓；版本化快照 + 索引元数据已满足需求 |
 | D8 | **跨平台 exe（Linux + macOS）** | M5 发布 | ✅ **完成**（M6 收尾） | CI 三平台原生构建 + 原生冒烟 + tag 触发发布；详见 §7.1 |
 | D9 | 中文 Lean 文档/教程 | M0 计划 | ⬜ 跳过 | 非工具功能；列入文档扩展项 |

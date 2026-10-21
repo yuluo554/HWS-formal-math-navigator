@@ -259,10 +259,16 @@ $ git check-attr -a data/index/theorems.jsonl data/snapshots/manifest.json \
 
 ## 六、遗留（交给下一轮）
 
-| # | 项 | 说明 |
-|---|---|---|
-| L0 | ~~写 RELEASE-M8 / 提交推送 / CI 绿 / 打 tag / 发 Release~~ | ✅ **已完成**（见 §五；run `39482520223` 与 `39483233797` 全绿，Release 7 附件真下载复核通过） |
-| L1 | **真 Lean 实测** | 本机无 Lean，D2 的修复只有"假 lean 夹具"证据。需在装了 Lean 4 的机器上跑三种输入并记录 `lean --version` 与 rc/stdout |
-| L2 | macOS / Linux 实机目检 | 附件 sha256 可核，但两平台的原生运行只在 CI runner 跑过；若打包器变了需重新确认 |
-| L3 | `vector` extra 从未被 import | 与 jinja2 同类（"声明了但没实现"）；本批只清了 jinja2 |
-| L4 | 领域覆盖度是否进判定 | 需要先修分类规则（按 `Mathlib.Data.*` 的实际语义映射），否则接进门禁只会恒红 |
+| # | 项 | 状态 | 说明 |
+|---|---|---|---|
+| L0 | 写 RELEASE-M8 / 提交推送 / CI 绿 / 打 tag / 发 Release / 真下载复核 | ✅ **已完成** | 见 §五（run `39519879201`、`39520358078` 全绿；Release 7 附件 `sha256sum -c` 5/5 OK） |
+| L1 | **真 Lean 实测** | ⬜ **未闭（唯一 P1 级未验证项）** | 本机无 Lean（`command -v lean` 空、`~/.elan` 不存在），D2 的修复只有"可注入假 lean 夹具"证据。需在装了 Lean 4 的机器上跑三种输入并记录 `lean --version` 与 rc/stdout |
+| L2 | macOS / Linux 实机目检 | ⏭️ **用户 2026-10-21 决定跳过** | 两平台的原生运行只在 CI runner 上跑过（`build` job 的 "Smoke test frozen exe (native)" 已实跑四命令）；附件 sha256 已四方对撞。用户明确表示不做实机目检，本项不再作为阻塞 |
+| L3 | `vector` extra 从未被 import | ⬜ 开 | 与 jinja2 同类（"声明了但没实现"）；本批只清了 jinja2 |
+| L4 | 领域覆盖度是否进判定 | ⬜ 开 | 需先修分类规则（按 `Mathlib.Data.*` 的实际语义映射），否则接进门禁只会恒红 |
+| L5 | CI 3.13 矩阵腿（DEC6） | ✅ 按 A 落地 | 本机无 3.13，**结论只以 CI 为准**（两条 3.13 腿在两次 run 里均 success）；本批任何记录都未声称本机 3.13 通过。若要改为只留 3.12，是一行配置 |
+
+### 6.1 本批收尾状态
+
+**已发布**（v0.1.2 在 main 上、tag 与 Release 齐备、发布物已真下载复核），唯一未闭的验证项是 **L1 真 Lean 实测**（需外部机器）。
+`v0.1.0` / `v0.1.1` 的 tag 与 Release 未动。

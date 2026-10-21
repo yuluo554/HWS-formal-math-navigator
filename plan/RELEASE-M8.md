@@ -200,50 +200,62 @@ $ git check-attr -a data/index/theorems.jsonl data/snapshots/manifest.json \
 ## 五、tag 后追加事实
 
 > 本节内容产生于 tag 之后，与 §一 分开记录。
+> **注意**：本节在 tag 树里保存的是当时快照；tag 之后又发生过一次**重指**（见下），
+> 故**最终事实以本节当前版本为准**（tag 树内的版本是较早的一次快照）。
 
-**tag 提交**：`32b5cb1e8e7e0b81a13b67832fa491728faa2fce`（annotated tag `v0.1.2` 指向该提交）。
+### 5.1 tag 重指（诚实记录）
 
-**CI 证据（两次 run，均全 success）**：
-
-| run | 触发 | job | 结论 |
+| 次 | tag 提交 | 触发的 run | 为什么重指 |
 |---|---|---|---|
-| `39482520223` | push `main`（`32b5cb1`） | 8 | ✅ 4 测试腿（ubuntu/windows × 3.12/3.13）+ 3 平台 build + publish(skipped) |
-| `39483233797` | push tag `v0.1.2`（同提交） | 8 | ✅ 7 job success + publish success |
+| 第 1 次 | `32b5cb1` | `39482520223`（push main）/ `39483233797`（tag）均 success | — |
+| **第 2 次（最终）** | **`f82ccad`** | `39519879201`（push main）/ `39520358078`（tag）均 success | 首发把自述测试数写成 **227**（实测 263），改正并补自指守门后重指（见 §3.5.1） |
 
-**注解**：Node20 弃用告警 **0 条**（actions 全升 v7/v8 后消失）。
-仅剩 GitHub 平台级 notice 4 条（3 条 `ubuntu-latest → Ubuntu 26` 迁移提示、1 条 macOS arm64 容量提示），与本仓代码无关。
+重指前推送过一次 `main`（`f82ccad`）并确认 CI 全绿，之后才 `git push --force` 覆盖 tag，
+随后 publish job 重建 Release（附件哈希随之变化）。
 
-**Release 附件**（`gh release view v0.1.2 --json assets` 回读）：
+### 5.2 最终 CI 证据
+
+| run | 触发 | 结论 |
+|---|---|---|
+| `39519879201` | push `main`（`f82ccad`） | ✅ 4 测试腿 + 3 平台 build success；publish skipped |
+| `39520358078` | push tag `v0.1.2`（同提交） | ✅ 7 job success + **publish success** |
+
+**注解**：Node20 弃用告警 **0 条**。仅剩 GitHub 平台级 notice 4 条
+（3 条 `ubuntu-latest → Ubuntu 26` 迁移提示、1 条 macOS arm64 容量提示），与本仓代码无关。
+
+### 5.3 最终 Release 附件（`gh release view v0.1.2 --json assets` 回读）
 
 | 附件 | 大小 | sha256（API digest，去前缀） |
 |---|---|---|
-| `hws-formal-math-v0.1.2-win64.zip` | 21,870,552 B | `8aaaf18910eda7af668fda882cad8356c6253be235a82290c26931326ce5216c` |
-| `hws-formal-math-v0.1.2-linux-x86_64.zip` | 54,797,077 B | `7ad9c2f62251adba7012177fbab737a519ec386375e2653722e9b26f1fe0073b` |
-| `hws-formal-math-v0.1.2-macos-arm64.zip` | 38,271,266 B | `68edca11865dc366572c407fa7163b960ac7cd28b108ff22e8060f38a6cd315f` |
-| `hws_formal_math_navigator-0.1.2-py3-none-any.whl` | 68,813 B | `18dfb666620b740b54a38336b4d33e3fcd487e665e265a7303183b3827dd072b` |
-| `hws_formal_math_navigator-0.1.2.tar.gz` | 178,891 B | `274b163a168c403463acaf62429dc98aeb8ca1edc6ef1ebd590d01295b619153` |
-| `SHA256SUMS.txt` | 530 B | `b32a0aa28218bc371a60f83e9dccc287b3e9131011a573d8baa249a45a325583` |
+| `hws-formal-math-v0.1.2-win64.zip` | 21,870,552 B | `45551ef867a005e9a54a2593f620c85c256dacfd8f5f74d6f2fbc1181c7d9473` |
+| `hws-formal-math-v0.1.2-linux-x86_64.zip` | 54,797,077 B | `9f4800eff57f0d238abc4b378a9185ad36988cdefbc400b34ca1a9b1c7c6be5b` |
+| `hws-formal-math-v0.1.2-macos-arm64.zip` | 38,271,266 B | `053821af3434b2b27b688ad12e79a3dac2d363b9a679b80b2775234faa1018c3` |
+| `hws_formal_math_navigator-0.1.2-py3-none-any.whl` | 68,812 B | `746b099cce448a200514974cc5153668009ac317b69707c3cd0aa6d40f62cd07` |
+| `hws_formal_math_navigator-0.1.2.tar.gz` | 181,623 B | `9e809f8784f540ede3d3b5eb050eba3b18847e823c03ff3ed0f9cec5ef3a8537` |
+| `SHA256SUMS.txt` | 530 B | `49dc16bfdf096e71da4131f4a039755fa92ec47cd4a6fed85441810c4b7a5cb2` |
 | `demo.gif` | 42,636 B | `1ea75122d338bce5c2b27f024c65310517e1633c67254b0f4d89df0f2f3edb2c` |
 
-**真下载复核**（中立目录 `%TEMP%\fmn-m8\rel`，直连 GitHub）：
+> 三次 zip 的大小完全相同（21,870,552 / 54,797,077 / 38,271,266 B）而 sha256 不同 ——
+> 这是 PyInstaller 产物**不承诺跨次构建字节一致**的已知特性（CI 注释已声明），
+> 与"打包这一步"（`ZIP_STORED` + 条目排序 + 固定时间戳）的可复现性不冲突。
+
+**Release 正文**：读的是 tag 树里的 `RELEASE-NOTES.md`，已确认含 `266 tests passed`（不再是 227）。
+
+### 5.4 真下载复核（中立目录，直连 GitHub）
 
 | 命令 | 结果 |
 |---|---|
-| 下载全部 7 个附件后 `sha256sum -c SHA256SUMS.txt` | **5/5 OK**（SHA256SUMS 只列 5 个构建件，demo.gif 与它自身按约定不列） |
-| `unzip` win64 zip → 双 exe 就位 | 77 个条目，`hws-formal-math.exe` + `hws-formal-math-viewer.exe` |
-| `hws-formal-math.exe selftest` | **exit 0**，索引 35 条 / 数据自证通过 / 冻结态数据目录随包 |
-| `hws-formal-math.exe search "加法结合律"` | **exit 0**，9 条，首条 `add_assoc` 3.8673 |
-| `hws-formal-math.exe bench --suite retrieval` | **exit 0**，Recall@10 0.9 / MRR 0.9 |
-| `hws-formal-math-viewer.exe --selftest` | **exit 0**，35 条 / 5 命中 / 4 节点 8 边 / 3,092 B HTML |
-| 干净 venv 装 Release **wheel** → 中立目录 `selftest`/`search`/`bench --suite retrieval`/`export -o o/custom.json`/`viewer --selftest` | **全部 exit 0**（G1 达成） |
-| `pip show` 版本 vs `hws_formal_math.__version__` | **0.1.2 / 0.1.2**（D11 双源已消除） |
+| 下载全部 7 附件后 `sha256sum -c SHA256SUMS.txt` | **5/5 OK** |
+| `unzip` win64 zip → 双 exe | `hws-formal-math.exe` + `hws-formal-math-viewer.exe` |
+| `hws-formal-math.exe selftest` | **exit 0**（索引 35 条 / **数据自证通过** / 冻结态数据目录随包） |
+| `hws-formal-math.exe search "加法结合律"` | **exit 0** |
+| `hws-formal-math.exe bench --suite retrieval` | **exit 0** |
+| `hws-formal-math-viewer.exe --selftest` | **exit 0** |
+| 干净 venv 装 Release **wheel**（`selftest` / `search` / `bench --suite retrieval` / `bench --suite depgraph` / `export --format json -o o/custom.json` / `viewer --selftest`） | **全部 exit 0** |
+| `hws-formal-math --version` | **exit 0**，`hws-formal-math 0.1.2` |
 
-> 注：CI 构建的 wheel/sdist 与本机构建的**字节不同**（68,813 B vs 69,011 B；178,891 B vs 174,625 B）。
-> 这是 setuptools 版本与构建平台差异导致的**记录顺序/时间戳**差异，不是缺陷；
-> 本仓的字节级承诺只给"打包这一步"（`ZIP_STORED` + 条目排序 + 固定时间戳）与**数据文件**，
-> 不对 sdist/wheel 承诺跨机字节一致。
-
----
+> 注：CI 构建的 wheel/sdist 与本机构建的字节不同（68,812 B vs 69,011 B；181,623 B vs 174,625 B），
+> 系数 setuptools 版本与构建平台差异；本仓不对 sdist/wheel 承诺跨机字节一致。
 
 ## 六、遗留（交给下一轮）
 

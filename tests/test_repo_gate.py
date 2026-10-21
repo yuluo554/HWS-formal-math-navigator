@@ -172,6 +172,55 @@ class TestInstallSurface:
         assert not missing, f"测试 import 但未声明依赖: {missing}"
 
 
+class TestSelfReportedTestCount:
+    """自述测试数必须等于实际收集数（D13 的机械守门）
+
+    D13 的形态是"文档写 185、实际 212"——已发布的数字与实物不符。
+    v0.1.2 期间又复发过一次（README 写 227、实际 263），所以这里把它变成可执行的判据：
+    **用当前 pytest 的真实收集数对撞 README 里的数字**。
+
+    自指性说明：本测试自己也算一条，因此 README 里的数字必须等于**含本测试在内**的总数。
+    改测试数量后必须同步改 README —— 这就是想要的效果。
+    """
+
+    def _collected_total(self) -> int:
+        import subprocess
+
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "tests/", "--collect-only", "-q"],
+            cwd=str(REPO_ROOT), capture_output=True, text=True, encoding="utf-8",
+        )
+        match = re.search(r"(\d+) tests? collected", result.stdout)
+        assert match, f"未解析到收集数：{result.stdout[-400:]}"
+        return int(match.group(1))
+
+    def test_readme_count_matches_collection(self):
+        total = self._collected_total()
+        readme = README.read_text(encoding="utf-8")
+        match = re.search(r"\*\*(\d+) 项测试全绿\*\*", readme)
+        assert match, "README「验证与质量」未写测试数"
+        stated = int(match.group(1))
+        assert stated == total, (
+            f"README 自述 {stated} 项，实际收集 {total} 项（D13 复发）"
+        )
+
+    def test_readme_code_block_count_matches(self):
+        """README 里的可粘贴命令注释也必须同数（同一个数字的两处写法）"""
+        total = self._collected_total()
+        readme = README.read_text(encoding="utf-8")
+        assert f"# {total} passed" in readme, f"README 命令注释未写 {total} passed"
+
+    def test_release_notes_count_matches_collection(self):
+        """RELEASE-NOTES 的测试数同样必须对撞（它进 Release 正文）"""
+        total = self._collected_total()
+        notes = RELEASE_NOTES.read_text(encoding="utf-8")
+        match = re.search(r"\*\*(\d+) tests passed\*\*", notes)
+        assert match, "RELEASE-NOTES 未写 tests passed"
+        assert int(match.group(1)) == total, (
+            f"RELEASE-NOTES 自述 {match.group(1)}，实际 {total}"
+        )
+
+
 class TestPythonFloorGate:
     """Python floor 五处一致（DEC1=B：>=3.12）
 

@@ -66,7 +66,7 @@ certutil -hashfile hws-formal-math-<tag>-win64.zip SHA256
 
 - **CI 矩阵**：ubuntu-latest / windows-latest × Python 3.12 / 3.13
 - **三平台原生构建 + 原生冒烟**：Linux / Windows / macOS 各自在原生 runner 上构建并真实运行冻结产物
-- **227 tests passed**（本地 Python 3.12 实测）
+- **266 tests passed**（本地 Python 3.12 实测）
 - **数据自证**：`manifest.json` 的 `sha256` 与磁盘实算对撞（`selftest` + `tools/check_data_integrity.py --strict`）
 - **确定性**：检索/依赖图同输入同结果；报告 JSON 逐字节可复现；生成器支持 `--check` 位级一致（只读）
 - **打包确定性**：同 dist 树两次独立打包逐字节一致（`ZIP_STORED` + 条目排序 + 固定时间戳）

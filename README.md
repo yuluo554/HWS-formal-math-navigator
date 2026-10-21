@@ -236,10 +236,10 @@ python tools/build_index.py --mathlib4 ./mathlib4     --commit-hash $(git -C mat
 
 - **CI 矩阵**：`ubuntu-latest` / `windows-latest` × Python `3.12` / `3.13`（4 job）
 - **三平台原生构建 + 原生冒烟**：Linux / Windows / macOS 各自在原生 runner 上构建并真实运行冻结产物
-- **227 项测试全绿**（本地 Python 3.12 实测；CI 矩阵见上）
+- **266 项测试全绿**（本地 Python 3.12 实测；CI 矩阵见上）
 
   ```bash
-  python -m pytest tests/ -q     # 227 passed
+  python -m pytest tests/ -q     # 266 passed
   ```
 - **数据自证**：每个 `manifest.json` 登记随包数据的 `sha256`，`selftest` 与
   `tools/check_data_integrity.py --data-dir data --strict` 双处核验（篡改即非 0 退出）
